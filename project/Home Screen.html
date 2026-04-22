@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /home</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#1a1612;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 24px;
+  gap:48px;
+  flex-wrap:wrap;
+}
+::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const TYPES = {
+  household:{color:T.household,bg:T.householdBg},
+  must_do:  {color:T.mustDo,   bg:T.mustDoBg},
+  ongoing:  {color:T.ongoing,  bg:T.ongoingBg},
+  challenge:{color:T.challenge,bg:T.challengeBg},
+  event:    {color:T.event,    bg:T.eventBg},
+};
+
+const MEMBERS = [
+  {id:'all',  name:'Всички', init:'',   color:'#1e1a16'},
+  {id:'mama', name:'Мама',   init:'М',  color:T.avatars[0]},
+  {id:'petko',name:'Петко',  init:'П',  color:T.avatars[1]},
+  {id:'elena',name:'Елена',  init:'Е',  color:T.avatars[2]},
+  {id:'ivan', name:'Иван',   init:'И',  color:T.avatars[3]},
+];
+
+const DAYS = ['П','В','С','Ч','П','С','Н'];
+const DATES = [20,21,22,23,24,25,26];
+const TODAY = 2; // Wednesday = index 2
+
+// Sample data per day-column [dayIdx] -> array of blocks
+const TASKS = {
+  0:[
+    {type:'household',title:'Кухня',dur:20,member:1,y:8,h:2,streak:false},
+    {type:'ongoing',  title:'Четене',dur:20,member:3,y:10,h:2,streak:true},
+  ],
+  1:[
+    {type:'must_do',  title:'Домашно',dur:45,member:3,y:9,h:3,streak:false},
+    {type:'event',    title:'Пиано',dur:45,member:2,y:16,h:3,streak:false},
+  ],
+  2:[
+    {type:'challenge',title:'Спорт',dur:30,member:2,y:8,h:2,streak:true},
+    {type:'household',title:'Маса',dur:10,member:3,y:11,h:1,streak:false},
+    {type:'must_do',  title:'Матем.',dur:40,member:2,y:14,h:3,streak:false},
+  ],
+  3:[
+    {type:'ongoing',  title:'Четене',dur:20,member:3,y:9,h:2,streak:true},
+    {type:'event',    title:'Лекар',dur:60,member:1,y:10,h:4,streak:false},
+  ],
+  4:[
+    {type:'household',title:'Стая',dur:25,member:2,y:8,h:2,streak:false},
+    {type:'challenge',title:'Спорт',dur:30,member:3,y:10,h:2,streak:true},
+  ],
+  5:[
+    {type:'event',title:'Рожден ден',dur:120,member:0,y:11,h:5,streak:false},
+  ],
+  6:[],
+};
+
+const UNSCHEDULED = [
+  {type:'must_do',  title:'Боклук',member:1},
+  {type:'household',title:'Перне',member:2},
+  {type:'ongoing',  title:'Завод',member:3},
+];
+
+// ── Shared micro-components ───────────────────────────────────────────────
+
+const Av = ({m, size=24, ring=false, badge=null}) => (
+  <div style={{position:'relative',flexShrink:0}}>
+    <div style={{
+      width:size,height:size,borderRadius:'50%',
+      background: m.id==='all' ? T.surf2 : m.color,
+      border:`${ring?'2.5px':'1.5px'} solid ${ring?'#fff':m.color+'40'}`,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      color: m.id==='all' ? T.text2 : '#fff',
+      fontSize:size*0.36,fontWeight:700,fontFamily:'Nunito,sans-serif',
+    }}>
+      {m.id==='all' ? '👨‍👩‍👧‍👦' : m.init}
+    </div>
+    {badge && <div style={{
+      position:'absolute',bottom:-2,right:-2,
+      width:10,height:10,borderRadius:'50%',
+      background:badge,border:'1.5px solid #fff',
+    }}/>}
+  </div>
+);
+
+const TaskChip = ({task}) => {
+  const m = MEMBERS[task.member+1]||MEMBERS[1];
+  const tp = TYPES[task.type]||TYPES.household;
+  return (
+    <div style={{
+      display:'inline-flex',alignItems:'center',gap:4,
+      background:tp.bg,border:`1px solid ${tp.color}30`,
+      borderRadius:99,padding:'2px 6px 2px 4px',flexShrink:0,
+    }}>
+      <div style={{width:6,height:6,borderRadius:'50%',background:tp.color}}/>
+      <span style={{fontSize:10,fontWeight:600,color:T.text,maxWidth:60,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{task.title}</span>
+      <Av m={m} size={14}/>
+    </div>
+  );
+};
+
+// ── Bottom Nav ─────────────────────────────────────────────────────────────
+const BottomNav = ({active=0}) => {
+  const tabs=[
+    {icon:'📅',label:'Календар'},
+    {icon:'✅',label:'Задачи'},
+    {icon:'🎁',label:'Желания'},
+    {icon:'👤',label:'Профил'},
+  ];
+  return (
+    <div style={{
+      display:'flex',justifyContent:'space-around',
+      padding:'8px 0 2px',borderTop:`1px solid ${T.border}`,
+      background:'#fff',
+    }}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{
+          display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+          padding:'4px 12px',borderRadius:12,
+          background:i===active?T.mustDo+'12':'transparent',
+          minWidth:56,
+        }}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── FAB ────────────────────────────────────────────────────────────────────
+const FAB = () => (
+  <div style={{
+    position:'absolute',bottom:72,right:16,
+    width:48,height:48,borderRadius:'50%',
+    background:T.mustDo,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:'#fff',fontSize:24,fontWeight:300,
+    boxShadow:`0 4px 16px ${T.mustDo}60`,
+    cursor:'pointer',zIndex:10,
+  }}>＋</div>
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Week Grid (классически)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [activeFilter, setFilter] = React.useState('all');
+  const [view, setView] = React.useState('week');
+  const HOUR_H = 44; // px per hour
+  const START_H = 7; // 07:00
+
+  const filteredTasks = (dayIdx) => {
+    const memberIdx = MEMBERS.findIndex(m=>m.id===activeFilter);
+    return (TASKS[dayIdx]||[]).filter(t =>
+      activeFilter==='all' || t.member === memberIdx-1
+    );
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 14px 0'}}>
+        {/* Top row */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Семейство Иванови</div>
+            <div style={{fontSize:16,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Април 2026</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            {/* Pending badge */}
+            <div style={{
+              background:T.mustDoBg,border:`1px solid ${T.mustDo}40`,
+              borderRadius:99,padding:'4px 8px',
+              display:'flex',alignItems:'center',gap:4,
+            }}>
+              <span style={{fontSize:10}}>⏳</span>
+              <span style={{fontSize:11,fontWeight:700,color:T.mustDo}}>3</span>
+            </div>
+            {/* Avatar (logged-in user) */}
+            <Av m={MEMBERS[1]} size={32} ring badge={T.mustDo}/>
+          </div>
+        </div>
+
+        {/* View toggle */}
+        <div style={{display:'inline-flex',background:T.surf2,borderRadius:99,padding:2,gap:1,marginBottom:10}}>
+          {['Ден','Седм','Месец'].map((v,i)=>(
+            <div key={v} onClick={()=>setView(v)} style={{
+              padding:'4px 12px',borderRadius:99,fontSize:11,fontWeight:600,
+              background: (i===1)?'#fff':'transparent',
+              color: (i===1)?T.text:T.text2,
+              boxShadow:(i===1)?'0 1px 3px rgba(0,0,0,0.1)':'none',
+              cursor:'pointer',
+            }}>{v}</div>
+          ))}
+        </div>
+
+        {/* Avatar filter */}
+        <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:10,paddingRight:4}}>
+          {MEMBERS.map(m=>(
+            <div key={m.id} onClick={()=>setFilter(m.id)} style={{
+              display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+              cursor:'pointer',flexShrink:0,
+            }}>
+              <div style={{
+                padding:2,borderRadius:'50%',
+                border:`2px solid ${activeFilter===m.id ? m.id==='all'?T.text:m.color : 'transparent'}`,
+                transition:'border-color 0.15s',
+              }}>
+                <Av m={m} size={m.id==='all'?28:30}/>
+              </div>
+              <span style={{
+                fontSize:9,fontWeight:activeFilter===m.id?700:400,
+                color:activeFilter===m.id?(m.id==='all'?T.text:m.color):T.text3,
+                transition:'color 0.15s',
+              }}>{m.name.split(' ')[0]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Unscheduled strip */}
+      <div style={{
+        background:T.surf2,borderBottom:`1px solid ${T.border}`,
+        padding:'5px 10px',
+        display:'flex',alignItems:'center',gap:6,overflowX:'auto',
+      }}>
+        <span style={{fontSize:9,fontWeight:700,color:T.text3,textTransform:'uppercase',letterSpacing:'0.08em',flexShrink:0}}>Floating</span>
+        {UNSCHEDULED.map((u,i)=><TaskChip key={i} task={u}/>)}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{flex:1,overflowY:'auto',overflowX:'hidden'}}>
+        {/* Day headers */}
+        <div style={{
+          display:'grid',gridTemplateColumns:'28px repeat(7,1fr)',
+          position:'sticky',top:0,background:'#fff',zIndex:5,
+          borderBottom:`1px solid ${T.border}`,
+        }}>
+          <div/>
+          {DAYS.map((d,i)=>(
+            <div key={i} style={{padding:'6px 2px',textAlign:'center',borderLeft:`1px solid ${T.border}`}}>
+              <div style={{fontSize:9,color:T.text3,fontWeight:500,textTransform:'uppercase'}}>{d}</div>
+              <div style={{
+                width:22,height:22,borderRadius:'50%',margin:'2px auto 0',
+                background: i===TODAY ? T.mustDo : 'transparent',
+                color: i===TODAY ? '#fff' : T.text,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:12,fontWeight:i===TODAY?700:500,
+              }}>{DATES[i]}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time rows */}
+        <div style={{position:'relative'}}>
+          {Array.from({length:13},(_,i)=>i+START_H).map(h=>(
+            <div key={h} style={{
+              display:'grid',gridTemplateColumns:'28px repeat(7,1fr)',
+              height:HOUR_H,borderBottom:`1px solid ${T.border}90`,
+            }}>
+              <div style={{
+                fontSize:9,color:T.text3,fontWeight:500,
+                padding:'3px 2px 0',textAlign:'right',lineHeight:1,
+              }}>{h}:00</div>
+              {DAYS.map((_,di)=>(
+                <div key={di} style={{
+                  borderLeft:`1px solid ${T.border}90`,
+                  background: di===TODAY ? T.mustDo+'04' : 'transparent',
+                }}/>
+              ))}
+            </div>
+          ))}
+
+          {/* Task blocks overlay */}
+          <div style={{
+            position:'absolute',top:0,left:28,right:0,
+            display:'grid',gridTemplateColumns:'repeat(7,1fr)',
+            height:'100%',pointerEvents:'none',
+          }}>
+            {DAYS.map((_,di)=>(
+              <div key={di} style={{position:'relative',borderLeft:`1px solid transparent`}}>
+                {filteredTasks(di).map((task,ti)=>{
+                  const tp = TYPES[task.type]||TYPES.household;
+                  const m = MEMBERS[task.member+1]||MEMBERS[1];
+                  const top = (task.y - START_H) * HOUR_H;
+                  const height = task.h * HOUR_H - 2;
+                  return (
+                    <div key={ti} style={{
+                      position:'absolute',top,left:2,right:2,height,
+                      background:tp.bg,
+                      borderLeft:`2.5px solid ${tp.color}`,
+                      borderRadius:'0 6px 6px 0',
+                      padding:'3px 4px',overflow:'hidden',
+                      pointerEvents:'all',cursor:'pointer',
+                    }}>
+                      <div style={{fontSize:9,fontWeight:700,color:T.text,lineHeight:1.3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {task.streak && '🔥 '}{task.title}
+                      </div>
+                      <div style={{
+                        position:'absolute',bottom:3,right:3,
+                        width:12,height:12,borderRadius:'50%',
+                        background:m.color,border:'1px solid #fff',
+                      }}/>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <BottomNav active={0}/>
+      <FAB/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Swimlanes (по член)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantB = () => {
+  const [activeDay, setDay] = React.useState(TODAY);
+  const [expandedMember, setExpanded] = React.useState(null);
+
+  const dayTasks = TASKS[activeDay]||[];
+  const memberTasks = (mi) => dayTasks.filter(t=>t.member===mi);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 14px 12px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Вторник, 22 Апр</div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Днес</div>
+          </div>
+          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+            <div style={{
+              background:T.challengeBg,border:`1px solid ${T.challenge}40`,
+              borderRadius:99,padding:'4px 10px',
+              fontSize:11,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif',
+              display:'flex',alignItems:'center',gap:4,
+            }}>
+              <span>⭐</span> 240
+            </div>
+            <Av m={MEMBERS[1]} size={32} ring/>
+          </div>
+        </div>
+
+        {/* Day strip */}
+        <div style={{display:'flex',gap:4,overflowX:'auto'}}>
+          {DAYS.map((d,i)=>{
+            const hasTasks=(TASKS[i]||[]).length>0;
+            const isToday=i===TODAY;
+            const isActive=i===activeDay;
+            return (
+              <div key={i} onClick={()=>setDay(i)} style={{
+                display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+                padding:'6px 8px',borderRadius:10,cursor:'pointer',flexShrink:0,
+                background: isActive ? T.mustDo : isToday ? T.mustDo+'12' : 'transparent',
+                transition:'background 0.15s',
+              }}>
+                <span style={{fontSize:9,fontWeight:600,color:isActive?'#fff80':isToday?T.mustDo:T.text3,textTransform:'uppercase'}}>{d}</span>
+                <span style={{fontSize:14,fontWeight:700,color:isActive?'#fff':isToday?T.mustDo:T.text}}>{DATES[i]}</span>
+                {hasTasks && <div style={{width:4,height:4,borderRadius:'50%',background:isActive?'#ffffff80':T.mustDo+'80'}}/>}
+                {!hasTasks && <div style={{width:4,height:4}}/>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Unscheduled */}
+      <div style={{
+        background:'#fff',borderBottom:`1px solid ${T.border}`,
+        padding:'6px 12px',display:'flex',alignItems:'center',gap:6,overflowX:'auto',
+      }}>
+        <span style={{fontSize:9,fontWeight:700,color:T.text3,textTransform:'uppercase',letterSpacing:'0.08em',flexShrink:0}}>Без час</span>
+        {UNSCHEDULED.map((u,i)=><TaskChip key={i} task={u}/>)}
+      </div>
+
+      {/* Swimlanes */}
+      <div style={{flex:1,overflowY:'auto',padding:'8px 12px',display:'flex',flexDirection:'column',gap:8}}>
+        {MEMBERS.slice(1).map((m,mi)=>{
+          const tasks = memberTasks(mi);
+          const isExpanded = expandedMember===mi;
+          return (
+            <div key={m.id} style={{
+              background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,
+              overflow:'hidden',
+              boxShadow:'0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              {/* Lane header */}
+              <div
+                onClick={()=>setExpanded(isExpanded?null:mi)}
+                style={{
+                  display:'flex',alignItems:'center',gap:10,padding:'10px 12px',
+                  cursor:'pointer',
+                  borderBottom: (tasks.length>0||isExpanded) ? `1px solid ${T.border}` : 'none',
+                }}
+              >
+                <Av m={m} size={34}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700,color:T.text}}>{m.name}</div>
+                  <div style={{fontSize:11,color:T.text3}}>
+                    {tasks.length===0 ? 'Без задачи' : `${tasks.length} задач${tasks.length===1?'а':'и'}`}
+                    {tasks.some(t=>t.streak) && ' · 🔥'}
+                  </div>
+                </div>
+                {/* Points earned today */}
+                {tasks.filter(t=>t.type!=='event').length>0 && (
+                  <div style={{
+                    background:T.challengeBg,borderRadius:99,padding:'3px 8px',
+                    fontSize:11,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif',
+                  }}>
+                    +{tasks.filter(t=>t.type!=='event').length*15}⭐
+                  </div>
+                )}
+                <span style={{fontSize:12,color:T.text3,marginLeft:4}}>{isExpanded?'▲':'▼'}</span>
+              </div>
+
+              {/* Tasks list */}
+              {(tasks.length>0) && (
+                <div style={{padding:'6px 10px',display:'flex',flexDirection:'column',gap:4}}>
+                  {tasks.map((task,ti)=>{
+                    const tp = TYPES[task.type]||TYPES.household;
+                    const typeLabels={household:'Домашно',must_do:'Must‑do',ongoing:'Ежедневно',challenge:'Предизвик.',event:'Събитие'};
+                    return (
+                      <div key={ti} style={{
+                        display:'flex',alignItems:'center',gap:8,
+                        padding:'8px 10px',
+                        background:tp.bg,
+                        borderLeft:`3px solid ${tp.color}`,
+                        borderRadius:'0 8px 8px 0',
+                      }}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:12,fontWeight:600,color:T.text}}>
+                            {task.streak&&'🔥 '}{task.title}
+                          </div>
+                          <div style={{fontSize:10,color:tp.color,fontWeight:500,marginTop:1}}>
+                            {typeLabels[task.type]} · {task.dur} мин
+                          </div>
+                        </div>
+                        <div style={{
+                          width:24,height:24,borderRadius:6,
+                          background:tp.color+'20',border:`1px solid ${tp.color}40`,
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          fontSize:12,cursor:'pointer',
+                        }}>✓</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {tasks.length===0 && isExpanded && (
+                <div style={{padding:'12px',textAlign:'center',fontSize:12,color:T.text3}}>
+                  Свободен ден 🎉
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <BottomNav active={0}/>
+      <FAB/>
+    </div>
+  );
+};
+
+// ── Wrap in iOS frames on canvas ──────────────────────────────────────────
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "darkMode": false,
+  "showPending": true
+}/*EDITMODE-END*/;
+
+const App = () => {
+  const [tweaks, setTweaks] = React.useState(TWEAK_DEFAULTS);
+  const [tweakOpen, setTweakOpen] = React.useState(false);
+
+  React.useEffect(()=>{
+    window.addEventListener('message', e=>{
+      if(e.data?.type==='__activate_edit_mode') setTweakOpen(true);
+      if(e.data?.type==='__deactivate_edit_mode') setTweakOpen(false);
+    });
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+  },[]);
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="home" title="/home — Семеен календар" subtitle="Mobile · 375px · Parent role">
+          <DCArtboard id="grid" label="A · Week Grid" width={375} height={780}>
+            <VariantA/>
+          </DCArtboard>
+          <DCArtboard id="swim" label="B · Swimlanes (по член)" width={375} height={780}>
+            <VariantB/>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      {/* Tweaks panel */}
+      {tweakOpen && (
+        <div style={{
+          position:'fixed',bottom:24,right:24,
+          background:'#fff',borderRadius:16,
+          border:`1px solid ${T.border}`,
+          boxShadow:'0 8px 32px rgba(0,0,0,0.15)',
+          padding:16,width:220,zIndex:9999,
+          fontFamily:'DM Sans,sans-serif',
+        }}>
+          <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:12,letterSpacing:'0.04em'}}>Tweaks</div>
+          {[
+            {key:'showPending', label:'Покажи pending badge'},
+          ].map(({key,label})=>(
+            <label key={key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,cursor:'pointer'}}>
+              <span style={{fontSize:12,color:T.text2}}>{label}</span>
+              <div
+                onClick={()=>{
+                  const next={...tweaks,[key]:!tweaks[key]};
+                  setTweaks(next);
+                  window.parent.postMessage({type:'__edit_mode_set_keys',edits:{[key]:next[key]}},'*');
+                }}
+                style={{
+                  width:36,height:20,borderRadius:99,cursor:'pointer',
+                  background:tweaks[key]?T.mustDo:T.border,
+                  position:'relative',transition:'background 0.2s',
+                }}
+              >
+                <div style={{
+                  position:'absolute',top:2,
+                  left:tweaks[key]?18:2,
+                  width:16,height:16,borderRadius:'50%',background:'#fff',
+                  transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+                }}/>
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f5f2ee;
+    color: #1e1a16;
+    min-height: 100vh;
+  }
+  :root {
+    --household: #2cb5a0;
+    --must-do: #f06449;
+    --ongoing: #4a90d9;
+    --challenge: #f5a623;
+    --baseline: #9099a6;
+    --event: #8b5cf6;
+    --bg: #f5f2ee;
+    --surface: #ffffff;
+    --surface-2: #f0ece6;
+    --text: #1e1a16;
+    --text-2: #6b6460;
+    --text-3: #9e9a96;
+    --border: #e4dfd8;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+  }
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+// ─── Tokens ────────────────────────────────────────────────────────────────
+
+const C = {
+  household: '#2cb5a0',
+  mustDo:    '#f06449',
+  ongoing:   '#4a90d9',
+  challenge: '#f5a623',
+  baseline:  '#9099a6',
+  event:     '#8b5cf6',
+
+  householdBg: '#e8f8f6',
+  mustDoBg:    '#fdf0ed',
+  ongoingBg:   '#eaf3fc',
+  challengeBg: '#fef6e8',
+  baselineBg:  '#f2f3f5',
+  eventBg:     '#f3effe',
+
+  bg:      '#f5f2ee',
+  surface: '#ffffff',
+  surf2:   '#f0ece6',
+  text:    '#1e1a16',
+  text2:   '#6b6460',
+  text3:   '#9e9a96',
+  border:  '#e4dfd8',
+
+  avatars: ['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449','#44b77a','#e8a838'],
+};
+
+const TYPE = {
+  household: { label: 'Household',  color: C.household, bg: C.householdBg },
+  must_do:   { label: 'Must‑do',    color: C.mustDo,    bg: C.mustDoBg    },
+  ongoing:   { label: 'Ongoing',    color: C.ongoing,   bg: C.ongoingBg   },
+  challenge: { label: 'Challenge',  color: C.challenge, bg: C.challengeBg },
+  baseline:  { label: 'Baseline',   color: C.baseline,  bg: C.baselineBg  },
+  event:     { label: 'Event',      color: C.event,     bg: C.eventBg     },
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+const Pill = ({ color, bg, children, small }) => (
+  <span style={{
+    display:'inline-flex', alignItems:'center', gap:4,
+    background: bg || color+'18',
+    color, border:`1px solid ${color}30`,
+    borderRadius:99, padding: small ? '2px 8px' : '3px 10px',
+    fontSize: small ? 11 : 12, fontWeight:600, letterSpacing:'0.01em',
+    fontFamily:'DM Sans,sans-serif',
+  }}>{children}</span>
+);
+
+const Dot = ({ color, size=10 }) => (
+  <span style={{
+    display:'inline-block', width:size, height:size,
+    borderRadius:'50%', background:color, flexShrink:0,
+  }}/>
+);
+
+const Avatar = ({ color, initials, size=32, ring=false }) => (
+  <div style={{
+    width:size, height:size, borderRadius:'50%',
+    background:color,
+    display:'flex', alignItems:'center', justifyContent:'center',
+    color:'#fff', fontWeight:700, fontSize:size*0.35,
+    fontFamily:'Nunito,sans-serif',
+    boxShadow: ring ? `0 0 0 2px #fff, 0 0 0 4px ${color}` : 'none',
+    flexShrink:0,
+  }}>{initials}</div>
+);
+
+const Card = ({ children, style }) => (
+  <div style={{
+    background: C.surface, borderRadius:12,
+    border:`1px solid ${C.border}`,
+    boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+    overflow:'hidden', ...style,
+  }}>{children}</div>
+);
+
+const SectionLabel = ({ children }) => (
+  <div style={{
+    fontSize:10, fontWeight:700, letterSpacing:'0.12em',
+    textTransform:'uppercase', color:C.text3,
+    marginBottom:8, fontFamily:'DM Sans,sans-serif',
+  }}>{children}</div>
+);
+
+// ─── SECTION 1: Colors ─────────────────────────────────────────────────────
+
+const ColorsArtboard = () => {
+  const taskColors = Object.entries(TYPE);
+  const neutral = [
+    { name:'Background', val:'#f5f2ee' },
+    { name:'Surface', val:'#ffffff' },
+    { name:'Surface 2', val:'#f0ece6' },
+    { name:'Border', val:'#e4dfd8' },
+    { name:'Text', val:'#1e1a16' },
+    { name:'Text 2', val:'#6b6460' },
+    { name:'Text 3', val:'#9e9a96' },
+  ];
+  return (
+    <div style={{fontFamily:'DM Sans,sans-serif', padding:24, width:660}}>
+      <SectionLabel>Task type colors</SectionLabel>
+      <div style={{display:'flex', gap:8, marginBottom:24, flexWrap:'wrap'}}>
+        {taskColors.map(([k,v])=>(
+          <div key={k} style={{textAlign:'center'}}>
+            <div style={{width:72,height:56,borderRadius:10,background:v.bg,
+              border:`2px solid ${v.color}`,marginBottom:6,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <div style={{width:28,height:28,borderRadius:6,background:v.color}}/>
+            </div>
+            <div style={{fontSize:11,fontWeight:600,color:C.text}}>{v.label}</div>
+            <div style={{fontSize:10,color:C.text3,fontFamily:'monospace'}}>{v.color}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Neutral palette</SectionLabel>
+      <div style={{display:'flex', gap:6, marginBottom:24, flexWrap:'wrap'}}>
+        {neutral.map(n=>(
+          <div key={n.name} style={{textAlign:'center'}}>
+            <div style={{
+              width:64,height:44,borderRadius:8,
+              background:n.val,
+              border:`1px solid ${C.border}`,
+              marginBottom:4,
+            }}/>
+            <div style={{fontSize:10,fontWeight:600,color:C.text}}>{n.name}</div>
+            <div style={{fontSize:10,color:C.text3,fontFamily:'monospace'}}>{n.val}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Avatar colors (8-swatch palette)</SectionLabel>
+      <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+        {C.avatars.map((a,i)=>(
+          <div key={i} style={{textAlign:'center'}}>
+            <div style={{width:44,height:44,borderRadius:'50%',background:a,marginBottom:4}}/>
+            <div style={{fontSize:10,color:C.text3,fontFamily:'monospace'}}>{a}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SECTION 2: Typography ─────────────────────────────────────────────────
+
+const TypographyArtboard = () => {
+  const scale = [
+    { name:'Display',    size:32, weight:800, family:'Nunito', sample:'Семейна седмица' },
+    { name:'H1',         size:24, weight:700, family:'Nunito', sample:'Kalendar — юни 2026' },
+    { name:'H2',         size:18, weight:700, family:'Nunito', sample:'Задачи за днес' },
+    { name:'H3',         size:15, weight:600, family:'Nunito', sample:'Предстоящи събития' },
+    { name:'Body',       size:14, weight:400, family:'DM Sans', sample:'Изчисти кухнята преди вечеря. Важно за цялото семейство.' },
+    { name:'Body Med',   size:14, weight:500, family:'DM Sans', sample:'Одобрено от родителя · 20 точки' },
+    { name:'Label',      size:12, weight:600, family:'DM Sans', sample:'MUST‑DO · ДНЕС' },
+    { name:'Caption',    size:11, weight:400, family:'DM Sans', sample:'Последно изпълнено преди 3 дни' },
+    { name:'Micro',      size:10, weight:600, family:'DM Sans', sample:'×1.5 STREAK BONUS' },
+  ];
+  return (
+    <div style={{fontFamily:'DM Sans,sans-serif', padding:24, width:560}}>
+      <div style={{display:'flex',flexDirection:'column',gap:16}}>
+        {scale.map(s=>(
+          <div key={s.name} style={{display:'flex',alignItems:'baseline',gap:16,
+            paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+            <div style={{width:80,flexShrink:0}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.text}}>{s.name}</div>
+              <div style={{fontSize:10,color:C.text3}}>{s.family} · {s.size}px · {s.weight}</div>
+            </div>
+            <div style={{
+              fontFamily:s.family+',sans-serif',
+              fontSize:s.size, fontWeight:s.weight,
+              color:C.text, lineHeight:1.3,
+            }}>{s.sample}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SECTION 3: Spacing & Radius ──────────────────────────────────────────
+
+const SpacingArtboard = () => {
+  const spaces = [4,8,12,16,20,24,32,40,48,64];
+  const radii = [
+    {name:'sm',val:6},{name:'md',val:10},{name:'lg',val:16},
+    {name:'xl',val:22},{name:'pill',val:99},{name:'full',val:'50%'},
+  ];
+  const shadows = [
+    {name:'xs',val:'0 1px 2px rgba(0,0,0,0.06)'},
+    {name:'sm',val:'0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)'},
+    {name:'md',val:'0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)'},
+    {name:'lg',val:'0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)'},
+    {name:'xl',val:'0 16px 48px rgba(0,0,0,0.12)'},
+  ];
+  return (
+    <div style={{fontFamily:'DM Sans,sans-serif',padding:24,width:640}}>
+      <SectionLabel>Spacing scale (px)</SectionLabel>
+      <div style={{display:'flex',gap:4,alignItems:'flex-end',marginBottom:28}}>
+        {spaces.map(s=>(
+          <div key={s} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+            <div style={{width:s,height:s,background:C.ongoing,borderRadius:2}}/>
+            <div style={{fontSize:10,color:C.text3}}>{s}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Border radius</SectionLabel>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:28}}>
+        {radii.map(r=>(
+          <div key={r.name} style={{textAlign:'center'}}>
+            <div style={{
+              width:48,height:48,background:C.surf2,
+              border:`2px solid ${C.border}`,
+              borderRadius:r.val,marginBottom:6,
+            }}/>
+            <div style={{fontSize:11,fontWeight:600,color:C.text}}>r-{r.name}</div>
+            <div style={{fontSize:10,color:C.text3}}>{r.val}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionLabel>Shadows</SectionLabel>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+        {shadows.map(sh=>(
+          <div key={sh.name} style={{textAlign:'center'}}>
+            <div style={{
+              width:56,height:56,background:'#fff',
+              borderRadius:10,boxShadow:sh.val,marginBottom:6,
+            }}/>
+            <div style={{fontSize:11,fontWeight:600,color:C.text}}>{sh.name}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SECTION 4: Buttons & Controls ────────────────────────────────────────
+
+const Btn = ({variant='primary',color,children,size='md',icon}) => {
+  const sz = size==='sm' ? {px:12,py:6,fs:12} : size==='lg' ? {px:20,py:12,fs:15} : {px:16,py:9,fs:13};
+  const styles = {
+    primary:   {bg:color||C.mustDo,    text:'#fff',    border:'none'},
+    secondary: {bg:C.surf2,            text:C.text,    border:`1px solid ${C.border}`},
+    outline:   {bg:'transparent',      text:color||C.mustDo, border:`1.5px solid ${color||C.mustDo}`},
+    ghost:     {bg:'transparent',      text:C.text2,   border:'none'},
+    danger:    {bg:'#fdf0ed',          text:C.mustDo,  border:`1.5px solid ${C.mustDo}`},
+    success:   {bg:C.householdBg,      text:C.household,border:`1.5px solid ${C.household}`},
+  };
+  const s = styles[variant];
+  return (
+    <div style={{
+      display:'inline-flex',alignItems:'center',gap:6,
+      background:s.bg,color:s.text,border:s.border,
+      borderRadius:99,padding:`${sz.py}px ${sz.px}px`,
+      fontSize:sz.fs,fontWeight:600,fontFamily:'DM Sans,sans-serif',
+      cursor:'pointer',letterSpacing:'0.01em',
+    }}>
+      {icon && <span style={{fontSize:sz.fs+1}}>{icon}</span>}
+      {children}
+    </div>
+  );
+};
+
+const ButtonsArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,width:560}}>
+    <SectionLabel>Button variants</SectionLabel>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+      <Btn variant="primary">Потвърди</Btn>
+      <Btn variant="secondary">Отказ</Btn>
+      <Btn variant="outline">Предложи задача</Btn>
+      <Btn variant="ghost">Виж всички</Btn>
+      <Btn variant="danger">Отхвърли</Btn>
+      <Btn variant="success">Одобри</Btn>
+    </div>
+
+    <SectionLabel>Sizes</SectionLabel>
+    <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:20}}>
+      <Btn size="sm">Малък</Btn>
+      <Btn size="md">Среден</Btn>
+      <Btn size="lg">Голям</Btn>
+    </div>
+
+    <SectionLabel>Color variants (task types)</SectionLabel>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+      {Object.entries(TYPE).map(([k,v])=>(
+        <Btn key={k} variant="primary" color={v.color}>{v.label}</Btn>
+      ))}
+    </div>
+
+    <SectionLabel>Icon buttons</SectionLabel>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+      <Btn variant="primary" icon="✓">Изпълнено</Btn>
+      <Btn variant="outline" icon="＋">Добави задача</Btn>
+      <Btn variant="secondary" icon="🔔">Напомняне</Btn>
+    </div>
+
+    <SectionLabel>Toggle / Tab control</SectionLabel>
+    <div style={{display:'inline-flex',background:C.surf2,borderRadius:99,padding:3,gap:2,marginBottom:20}}>
+      {['Седмица','Месец','Ден'].map((t,i)=>(
+        <div key={t} style={{
+          padding:'6px 16px',borderRadius:99,fontSize:13,fontWeight:600,
+          background: i===0 ? '#fff' : 'transparent',
+          color: i===0 ? C.text : C.text2,
+          boxShadow: i===0 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+          cursor:'pointer',
+        }}>{t}</div>
+      ))}
+    </div>
+
+    <div style={{marginTop:8}}/>
+    <SectionLabel>Input field</SectionLabel>
+    <div style={{display:'flex',flexDirection:'column',gap:8,maxWidth:280}}>
+      {[
+        {label:'Заглавие на задача',ph:'напр. Изчисти кухнята',state:'default'},
+        {label:'Описание',ph:'Детайли...',state:'focus'},
+        {label:'Имейл',ph:'',state:'error',val:'invalid-email',err:'Невалиден имейл'},
+      ].map(f=>(
+        <div key={f.label}>
+          <div style={{fontSize:11,fontWeight:600,color:C.text,marginBottom:3}}>{f.label}</div>
+          <div style={{
+            border:`1.5px solid ${f.state==='focus' ? C.mustDo : f.state==='error' ? '#e53e3e' : C.border}`,
+            borderRadius:8, padding:'8px 12px',
+            background:'#fff', color: f.val ? C.text : C.text3,
+            fontSize:13, boxShadow: f.state==='focus' ? `0 0 0 3px ${C.mustDo}20` : 'none',
+          }}>{f.val || f.ph}</div>
+          {f.err && <div style={{fontSize:11,color:'#e53e3e',marginTop:2}}>{f.err}</div>}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ─── SECTION 5: Calendar Components ───────────────────────────────────────
+
+const TaskBlock = ({type='household',title,duration,avatarColor,streak,floating}) => {
+  const t = TYPE[type] || TYPE.household;
+  return (
+    <div style={{
+      background:t.bg, borderLeft:`3px solid ${t.color}`,
+      borderRadius:'0 8px 8px 0', padding:'6px 8px',
+      minHeight: floating ? 32 : 48,
+      display:'flex',flexDirection:'column',justifyContent:'space-between',
+      position:'relative', overflow:'hidden',
+    }}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:4}}>
+        <div style={{fontSize:12,fontWeight:600,color:C.text,lineHeight:1.3,flex:1}}>{title}</div>
+        {streak && <span style={{fontSize:11}}>🔥</span>}
+      </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:4}}>
+        <span style={{fontSize:10,color:t.color,fontWeight:600}}>{duration}min</span>
+        {avatarColor && <div style={{width:16,height:16,borderRadius:'50%',background:avatarColor,border:'1.5px solid #fff'}}/>}
+      </div>
+    </div>
+  );
+};
+
+const EventBlock = ({title,color=C.event,time,duration}) => (
+  <div style={{
+    background:color+'18', border:`1px solid ${color}40`,
+    borderLeft:`3px solid ${color}`, borderRadius:'0 8px 8px 0',
+    padding:'6px 8px', minHeight:52,
+  }}>
+    <div style={{fontSize:12,fontWeight:600,color:C.text}}>{title}</div>
+    <div style={{fontSize:10,color,fontWeight:500,marginTop:2}}>{time} · {duration}min</div>
+  </div>
+);
+
+const CalendarArtboard = () => {
+  const days = ['Пон','Вт','Ср','Чет','Пет','Съб','Нед'];
+  const times = ['08:00','09:00','10:00','11:00','12:00'];
+  const members = [C.avatars[0],C.avatars[1],C.avatars[2],C.avatars[3]];
+  return (
+    <div style={{fontFamily:'DM Sans,sans-serif',padding:20,width:700,background:C.bg,borderRadius:16}}>
+      {/* Avatar filter bar */}
+      <div style={{
+        background:'#fff',borderRadius:12,padding:'10px 14px',
+        display:'flex',alignItems:'center',gap:10,marginBottom:12,
+        border:`1px solid ${C.border}`,
+      }}>
+        <div style={{fontSize:12,fontWeight:600,color:C.text2,marginRight:4}}>Всички</div>
+        {['М','П','Е','И'].map((init,i)=>(
+          <div key={i} style={{position:'relative'}}>
+            <Avatar color={members[i]} initials={init} size={32} ring={i===1}/>
+            {i===1 && <div style={{
+              position:'absolute',bottom:-2,right:-2,
+              width:10,height:10,borderRadius:'50%',
+              background:C.household,border:'1.5px solid #fff',
+            }}/>}
+          </div>
+        ))}
+        <div style={{marginLeft:'auto',display:'flex',gap:6}}>
+          <Btn variant="secondary" size="sm">＋ Задача</Btn>
+          <Btn variant="secondary" size="sm">＋ Събитие</Btn>
+        </div>
+      </div>
+
+      {/* Week grid */}
+      <div style={{background:'#fff',borderRadius:12,border:`1px solid ${C.border}`,overflow:'hidden'}}>
+        {/* Day headers */}
+        <div style={{display:'grid',gridTemplateColumns:'48px repeat(7,1fr)',borderBottom:`1px solid ${C.border}`}}>
+          <div/>
+          {days.map((d,i)=>(
+            <div key={d} style={{
+              padding:'8px 4px',textAlign:'center',
+              borderLeft:`1px solid ${C.border}`,
+            }}>
+              <div style={{fontSize:11,color:C.text3,fontWeight:500}}>{d}</div>
+              <div style={{
+                fontSize:15,fontWeight:700,color: i===1 ? '#fff' : C.text,
+                width:28,height:28,borderRadius:'50%',
+                background: i===1 ? C.mustDo : 'transparent',
+                display:'inline-flex',alignItems:'center',justifyContent:'center',
+                marginTop:2,
+              }}>{16+i}</div>
+            </div>
+          ))}
+        </div>
+        {/* Unscheduled strip */}
+        <div style={{
+          display:'grid',gridTemplateColumns:'48px repeat(7,1fr)',
+          background:C.surf2,borderBottom:`1px solid ${C.border}`,
+        }}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:4}}>
+            <span style={{fontSize:9,color:C.text3,writingMode:'vertical-rl',letterSpacing:'0.08em',fontWeight:600}}>FLOAT</span>
+          </div>
+          {days.map((d,i)=>(
+            <div key={d} style={{borderLeft:`1px solid ${C.border}`,padding:3,minHeight:36,display:'flex',flexDirection:'column',gap:2}}>
+              {i===1 && <TaskBlock type="household" title="Кухня" duration={20} avatarColor={C.avatars[1]} floating/>}
+              {i===3 && <TaskBlock type="must_do"   title="Домашно" duration={30} avatarColor={C.avatars[0]} floating/>}
+            </div>
+          ))}
+        </div>
+        {/* Time slots */}
+        {times.map((t,ti)=>(
+          <div key={t} style={{
+            display:'grid',gridTemplateColumns:'48px repeat(7,1fr)',
+            borderBottom:`1px solid ${C.border}`,minHeight:56,
+          }}>
+            <div style={{padding:'6px 4px 0 6px',fontSize:10,color:C.text3,fontWeight:500}}>{t}</div>
+            {days.map((d,di)=>(
+              <div key={d} style={{borderLeft:`1px solid ${C.border}`,padding:3}}>
+                {ti===0 && di===1 && <EventBlock title="Пиано" color={C.event} time="08:00" duration={45}/>}
+                {ti===1 && di===2 && <TaskBlock type="challenge" title="Спорт" duration={40} avatarColor={C.avatars[2]} streak/>}
+                {ti===2 && di===4 && <TaskBlock type="ongoing"   title="Четене" duration={25} avatarColor={C.avatars[0]}/>}
+                {ti===1 && di===5 && <EventBlock title="Рожден ден" color={C.avatars[4]} time="09:00" duration={120}/>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── SECTION 6: Task Card ──────────────────────────────────────────────────
+
+const TaskCardFull = ({type,title,pts,status,assignees,streak,due}) => {
+  const t = TYPE[type];
+  const statusMap = {
+    active:            {label:'Активна',   color:C.ongoing},
+    pending_approval:  {label:'Чака',       color:C.challenge},
+    approved:          {label:'Одобрена',  color:C.household},
+    rejected:          {label:'Отхвърлена',color:C.mustDo},
+    expired:           {label:'Изтекла',   color:C.baseline},
+  };
+  const s = statusMap[status] || statusMap.active;
+  return (
+    <Card style={{width:240}}>
+      <div style={{background:t.bg,borderBottom:`1px solid ${t.color}20`,padding:'10px 12px',display:'flex',alignItems:'center',gap:8}}>
+        <div style={{width:8,height:8,borderRadius:'50%',background:t.color}}/>
+        <Pill color={t.color} bg={t.bg} small>{t.label}</Pill>
+        <div style={{marginLeft:'auto',fontSize:13}}>
+          {streak && <span title="Streak">🔥</span>}
+        </div>
+      </div>
+      <div style={{padding:'10px 12px'}}>
+        <div style={{fontSize:14,fontWeight:600,color:C.text,marginBottom:4}}>{title}</div>
+        <div style={{fontSize:11,color:C.text3,marginBottom:10}}>{due}</div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{display:'flex',gap:-4}}>
+            {assignees.map((av,i)=>(
+              <div key={i} style={{marginLeft:i>0?-6:0,zIndex:assignees.length-i}}>
+                <Avatar color={av.color} initials={av.init} size={24}/>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: pts>0 ? C.challengeBg : C.surf2,
+            color: pts>0 ? C.challenge : C.text3,
+            borderRadius:99,padding:'3px 10px',fontSize:12,fontWeight:700,
+          }}>{pts>0 ? `+${pts} т.` : '—'}</div>
+        </div>
+        <div style={{
+          marginTop:10,padding:'4px 10px',background:s.color+'18',
+          borderRadius:99,fontSize:11,fontWeight:600,color:s.color,
+          display:'inline-block',
+        }}>{s.label}</div>
+      </div>
+    </Card>
+  );
+};
+
+const TaskCardsArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,display:'flex',gap:12,flexWrap:'wrap'}}>
+    <TaskCardFull type="household" title="Изчисти кухнята" pts={15} status="active"
+      assignees={[{color:C.avatars[0],init:'М'},{color:C.avatars[1],init:'П'}]}
+      due="Днес · 30 мин"/>
+    <TaskCardFull type="must_do" title="Домашно по математика" pts={20} status="pending_approval"
+      assignees={[{color:C.avatars[0],init:'М'}]}
+      due="Днес · 45 мин"/>
+    <TaskCardFull type="challenge" title="Сутрешен спорт" pts={25} status="approved"
+      assignees={[{color:C.avatars[2],init:'Е'}]}
+      streak due="Всеки ден · 30 мин"/>
+    <TaskCardFull type="ongoing" title="Четене 20 мин" pts={10} status="rejected"
+      assignees={[{color:C.avatars[3],init:'И'}]}
+      due="Утре · 20 мин"/>
+    <TaskCardFull type="baseline" title="Проверка на заданието" pts={0} status="expired"
+      assignees={[{color:C.avatars[1],init:'П'}]}
+      due="Вчера · —"/>
+  </div>
+);
+
+// ─── SECTION 7: Points & Gamification ─────────────────────────────────────
+
+const PointsBadge = ({pts,variant='default'}) => {
+  const v = {
+    default: {bg:C.challengeBg, color:C.challenge, prefix:''},
+    earn:    {bg:'#e8f8ef',     color:'#2d9e5f',   prefix:'+'},
+    spend:   {bg:C.mustDoBg,    color:C.mustDo,    prefix:'−'},
+    balance: {bg:'#1e1a16',     color:'#fff',      prefix:''},
+  }[variant];
+  return (
+    <div style={{
+      display:'inline-flex',alignItems:'center',gap:4,
+      background:v.bg,color:v.color,
+      borderRadius:99,padding:'4px 12px',
+      fontSize:14,fontWeight:800,fontFamily:'Nunito,sans-serif',
+    }}>
+      <span style={{fontSize:16}}>⭐</span>
+      {v.prefix}{pts}
+    </div>
+  );
+};
+
+const StreakChip = ({days}) => (
+  <div style={{
+    display:'inline-flex',alignItems:'center',gap:4,
+    background:'#fff3e0',color:'#c77700',
+    borderRadius:99,padding:'4px 12px',
+    fontSize:13,fontWeight:700,fontFamily:'Nunito,sans-serif',
+  }}>
+    🔥 {days} дни
+  </div>
+);
+
+const MultiplierBadge = ({mult}) => (
+  <div style={{
+    display:'inline-flex',alignItems:'center',gap:3,
+    background: mult>=3 ? '#fce7f3' : mult>=2 ? '#f3e8ff' : '#f0fdf4',
+    color: mult>=3 ? '#be185d' : mult>=2 ? '#7c3aed' : '#166534',
+    borderRadius:99,padding:'3px 10px',
+    fontSize:12,fontWeight:700,
+  }}>×{mult} мултипликатор</div>
+);
+
+const BadgeCard = ({icon,name,tier,earned}) => {
+  const tiers = {bronze:'#cd7f32',silver:'#a8a9ad',gold:'#ffd700',legendary:'#8b5cf6'};
+  return (
+    <div style={{
+      width:80,textAlign:'center',opacity:earned?1:0.4,
+    }}>
+      <div style={{
+        width:56,height:56,borderRadius:16,
+        background: earned ? tiers[tier]+'20' : C.surf2,
+        border:`2px solid ${earned ? tiers[tier] : C.border}`,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:24,margin:'0 auto 6px',
+      }}>{icon}</div>
+      <div style={{fontSize:11,fontWeight:600,color:C.text}}>{name}</div>
+      <div style={{fontSize:10,color:tiers[tier],fontWeight:600,marginTop:1,textTransform:'uppercase',letterSpacing:'0.08em'}}>{tier}</div>
+    </div>
+  );
+};
+
+const GamificationArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,width:560}}>
+    <SectionLabel>Points badges</SectionLabel>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
+      <PointsBadge pts={240} variant="balance"/>
+      <PointsBadge pts={20}  variant="earn"/>
+      <PointsBadge pts={50}  variant="spend"/>
+      <PointsBadge pts={15}  variant="default"/>
+    </div>
+
+    <SectionLabel>Streak & multipliers</SectionLabel>
+    <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:24}}>
+      <StreakChip days={14}/>
+      <MultiplierBadge mult={1}/>
+      <MultiplierBadge mult={1.5}/>
+      <MultiplierBadge mult={2}/>
+      <MultiplierBadge mult={3}/>
+    </div>
+
+    <SectionLabel>Points ledger row</SectionLabel>
+    <Card style={{marginBottom:24}}>
+      {[
+        {icon:'✓',label:'Изчисти кухнята',source:'task_approval',delta:+20,date:'Днес 14:32',color:C.household},
+        {icon:'⭐',label:'Дневна база',source:'daily_base',delta:+10,date:'Днес 00:01',color:C.challenge},
+        {icon:'🔥',label:'Стрийк бонус ×1.5',source:'streak_bonus',delta:+10,date:'Вчера 22:05',color:C.challenge},
+        {icon:'🎁',label:'Redemption — Видеоигри',source:'redemption',delta:-80,date:'Вчера 16:10',color:C.mustDo},
+      ].map((row,i)=>(
+        <div key={i} style={{
+          display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
+          borderBottom: i<3 ? `1px solid ${C.border}` : 'none',
+        }}>
+          <div style={{
+            width:32,height:32,borderRadius:'50%',background:row.color+'18',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0,
+          }}>{row.icon}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:500,color:C.text}}>{row.label}</div>
+            <div style={{fontSize:11,color:C.text3}}>{row.date}</div>
+          </div>
+          <div style={{
+            fontSize:14,fontWeight:700,fontFamily:'Nunito,sans-serif',
+            color: row.delta>0 ? '#2d9e5f' : C.mustDo,
+          }}>{row.delta>0?'+':''}{row.delta}</div>
+        </div>
+      ))}
+    </Card>
+
+    <SectionLabel>Badges</SectionLabel>
+    <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+      <BadgeCard icon="🏆" name="Чистач" tier="gold" earned/>
+      <BadgeCard icon="🔥" name="Стрийк" tier="silver" earned/>
+      <BadgeCard icon="⚡" name="Бърз" tier="bronze" earned/>
+      <BadgeCard icon="👑" name="Легенда" tier="legendary" earned/>
+      <BadgeCard icon="🌟" name="Перфект" tier="gold" earned={false}/>
+      <BadgeCard icon="🎯" name="Фокус" tier="silver" earned={false}/>
+    </div>
+  </div>
+);
+
+// ─── SECTION 8: Wish / Reward Cards ───────────────────────────────────────
+
+const WishCard = ({title,pts,status,locked,mystery}) => {
+  const statusStyle = {
+    available: {bg:C.surface,border:C.border,btn:'primary'},
+    pending:   {bg:'#fffbf0',border:C.challenge+'60',btn:null},
+    redeemed:  {bg:'#f0fdf6',border:C.household+'60',btn:null},
+  }[status] || {bg:C.surface,border:C.border};
+  return (
+    <Card style={{width:160,background:statusStyle.bg,border:`1px solid ${statusStyle.border}`,opacity:locked?0.55:1}}>
+      <div style={{
+        height:80,background: mystery ? 'linear-gradient(135deg,#667eea,#764ba2)' : C.challengeBg,
+        display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,
+      }}>{mystery ? '🎁' : '🎮'}</div>
+      <div style={{padding:'10px 12px'}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:6}}>
+          {mystery ? '??? Изненада' : title}
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{display:'flex',alignItems:'center',gap:4,fontSize:13,fontWeight:700,color:C.challenge,fontFamily:'Nunito,sans-serif'}}>
+            ⭐ {mystery ? '??' : pts}
+          </div>
+          {status==='available' && !locked && <Btn variant="primary" color={C.mustDo} size="sm">Заяви</Btn>}
+          {status==='pending' && <Pill color={C.challenge} small>Чака</Pill>}
+          {status==='redeemed' && <Pill color={C.household} small>✓</Pill>}
+        </div>
+        {locked && <div style={{fontSize:10,color:C.mustDo,marginTop:4,fontWeight:600}}>Заверши must-do задачи</div>}
+      </div>
+    </Card>
+  );
+};
+
+const WishArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,display:'flex',gap:12,flexWrap:'wrap'}}>
+    <WishCard title="Видеоигри 1ч" pts={80} status="available"/>
+    <WishCard title="Кино" pts={120} status="pending"/>
+    <WishCard title="Пица вечер" pts={60} status="redeemed"/>
+    <WishCard title="Заключена" pts={100} status="available" locked/>
+    <WishCard mystery status="available" pts={150}/>
+  </div>
+);
+
+// ─── SECTION 9: Role-based UI ──────────────────────────────────────────────
+
+const YoungChildHome = () => (
+  <div style={{
+    width:220,background:C.bg,borderRadius:20,overflow:'hidden',
+    border:`1px solid ${C.border}`,fontFamily:'DM Sans,sans-serif',
+  }}>
+    <div style={{background:C.mustDo,padding:'12px 16px',color:'#fff',display:'flex',alignItems:'center',gap:8}}>
+      <Avatar color='#fff' initials="И" size={32}/>
+      <div>
+        <div style={{fontSize:12,fontWeight:700}}>Иванчо</div>
+        <div style={{fontSize:11,opacity:0.8}}>⭐ 45 точки</div>
+      </div>
+    </div>
+    <div style={{padding:12,display:'flex',flexDirection:'column',gap:8}}>
+      {[
+        {emoji:'🍽️',label:'Маса',color:C.household},
+        {emoji:'🎒',label:'Раница',color:C.mustDo},
+        {emoji:'📚',label:'Четене',color:C.ongoing},
+      ].map(t=>(
+        <div key={t.label} style={{
+          background:t.color+'15',border:`2px solid ${t.color}`,
+          borderRadius:16,padding:12,
+          display:'flex',alignItems:'center',gap:12,
+          minHeight:64,
+        }}>
+          <span style={{fontSize:28}}>{t.emoji}</span>
+          <span style={{fontSize:16,fontWeight:700,color:C.text}}>{t.label}</span>
+          <div style={{
+            marginLeft:'auto',width:44,height:44,borderRadius:12,
+            background:t.color,display:'flex',alignItems:'center',
+            justifyContent:'center',fontSize:20,
+          }}>✓</div>
+        </div>
+      ))}
+    </div>
+    <div style={{padding:'0 12px 12px',fontSize:11,color:C.text3,textAlign:'center'}}>
+      Иконки само · Мин. 64px таргет
+    </div>
+  </div>
+);
+
+const ParentApproval = () => (
+  <div style={{width:280,fontFamily:'DM Sans,sans-serif'}}>
+    <Card>
+      <div style={{padding:'10px 14px',borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:14,fontWeight:700,color:C.text}}>Чакащи одобрения</div>
+        <Pill color={C.mustDo} small>3</Pill>
+      </div>
+      {[
+        {name:'Мария',task:'Изчисти кухнята',pts:15,avatar:C.avatars[0]},
+        {name:'Петко',task:'Домашно по биология',pts:20,avatar:C.avatars[1]},
+        {name:'Мария',task:'Сутрешен спорт',pts:25,avatar:C.avatars[0]},
+      ].map((a,i)=>(
+        <div key={i} style={{
+          padding:'10px 14px',borderBottom:i<2?`1px solid ${C.border}`:'none',
+          display:'flex',alignItems:'center',gap:10,
+        }}>
+          <Avatar color={a.avatar} initials={a.name[0]} size={32}/>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:600,color:C.text}}>{a.task}</div>
+            <div style={{fontSize:11,color:C.text3}}>{a.name} · +{a.pts} т.</div>
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            <div style={{width:28,height:28,borderRadius:8,background:C.householdBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:C.household,cursor:'pointer'}}>✓</div>
+            <div style={{width:28,height:28,borderRadius:8,background:C.mustDoBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:C.mustDo,cursor:'pointer'}}>✕</div>
+          </div>
+        </div>
+      ))}
+    </Card>
+  </div>
+);
+
+const RolesArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,display:'flex',gap:24,alignItems:'flex-start',flexWrap:'wrap'}}>
+    <div>
+      <SectionLabel>young_child — icon-only, 64px targets</SectionLabel>
+      <YoungChildHome/>
+    </div>
+    <div>
+      <SectionLabel>parent — approval queue</SectionLabel>
+      <ParentApproval/>
+    </div>
+    <div>
+      <SectionLabel>Role permission matrix</SectionLabel>
+      <Card style={{width:320}}>
+        <div style={{padding:'8px 14px',borderBottom:`1px solid ${C.border}`}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr repeat(4,40px)',gap:4,fontSize:10,fontWeight:700,color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>
+            <span>Действие</span>
+            <span style={{textAlign:'center'}}>PR</span>
+            <span style={{textAlign:'center'}}>TN</span>
+            <span style={{textAlign:'center'}}>CH</span>
+            <span style={{textAlign:'center'}}>YC</span>
+          </div>
+        </div>
+        {[
+          ['Създай задача','✓','~','✗','✗'],
+          ['Заяви задача','✓','✓','✓','✗'],
+          ['Одобри задача','✓','✗','✗','✗'],
+          ['Виж всички точки','✓','~','✗','✗'],
+          ['Поиска награда','✓','✓','✓','✗'],
+          ['Управлявай семейство','✓','✗','✗','✗'],
+          ['Предложи задача','✓','✓','✗','✗'],
+        ].map((row,i)=>(
+          <div key={i} style={{
+            display:'grid',gridTemplateColumns:'1fr repeat(4,40px)',
+            gap:4,padding:'7px 14px',
+            borderBottom: i<6 ? `1px solid ${C.border}` : 'none',
+            background: i%2===0 ? 'transparent' : C.surf2+'80',
+          }}>
+            <span style={{fontSize:12,color:C.text}}>{row[0]}</span>
+            {row.slice(1).map((v,j)=>(
+              <span key={j} style={{
+                textAlign:'center',fontSize:12,fontWeight:600,
+                color: v==='✓' ? C.household : v==='~' ? C.challenge : C.baseline,
+              }}>{v}</span>
+            ))}
+          </div>
+        ))}
+        <div style={{padding:'6px 14px',background:C.surf2}}>
+          <div style={{fontSize:10,color:C.text3}}>PR=parent · TN=teen · CH=child · YC=young_child · ~=partial</div>
+        </div>
+      </Card>
+    </div>
+  </div>
+);
+
+// ─── SECTION 10: Navigation Shell ─────────────────────────────────────────
+
+const ShellArtboard = () => (
+  <div style={{fontFamily:'DM Sans,sans-serif',padding:24,display:'flex',gap:20,flexWrap:'wrap',alignItems:'flex-start'}}>
+    {/* Mobile nav */}
+    <div>
+      <SectionLabel>Mobile bottom nav</SectionLabel>
+      <div style={{
+        width:320,background:'#fff',
+        border:`1px solid ${C.border}`,borderRadius:20,
+        padding:'10px 8px',
+        display:'flex',justifyContent:'space-around',
+        boxShadow:'0 -2px 12px rgba(0,0,0,0.06)',
+      }}>
+        {[
+          {icon:'📅',label:'Календар',active:true},
+          {icon:'✅',label:'Задачи',active:false},
+          {icon:'🎁',label:'Желания',active:false},
+          {icon:'🏅',label:'Профил',active:false},
+        ].map(n=>(
+          <div key={n.label} style={{
+            display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+            padding:'4px 12px',borderRadius:12,
+            background: n.active ? C.mustDo+'15' : 'transparent',
+          }}>
+            <span style={{fontSize:18}}>{n.icon}</span>
+            <span style={{
+              fontSize:10,fontWeight:n.active?700:500,
+              color:n.active?C.mustDo:C.text3,
+            }}>{n.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Profile switcher */}
+    <div>
+      <SectionLabel>Profile switcher</SectionLabel>
+      <Card style={{width:200}}>
+        <div style={{padding:'10px 12px',borderBottom:`1px solid ${C.border}`,fontSize:11,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>Семейство</div>
+        {[
+          {name:'Мама',role:'Родител',avatar:C.avatars[0],init:'М',active:true},
+          {name:'Петко',role:'Тийн',avatar:C.avatars[1],init:'П',active:false},
+          {name:'Елена',role:'Дете',avatar:C.avatars[2],init:'Е',active:false},
+          {name:'Иван',role:'Малко дете',avatar:C.avatars[3],init:'И',active:false},
+        ].map((p,i)=>(
+          <div key={i} style={{
+            display:'flex',alignItems:'center',gap:10,padding:'8px 12px',
+            borderBottom:i<3?`1px solid ${C.border}`:'none',
+            background:p.active?C.mustDo+'08':'transparent',
+          }}>
+            <Avatar color={p.avatar} initials={p.init} size={32}/>
+            <div>
+              <div style={{fontSize:13,fontWeight:p.active?700:500,color:C.text}}>{p.name}</div>
+              <div style={{fontSize:10,color:C.text3}}>{p.role}</div>
+            </div>
+            {p.active && <div style={{marginLeft:'auto',width:8,height:8,borderRadius:'50%',background:C.mustDo}}/>}
+          </div>
+        ))}
+      </Card>
+    </div>
+
+    {/* Notification item */}
+    <div>
+      <SectionLabel>Notification items</SectionLabel>
+      <Card style={{width:260}}>
+        {[
+          {icon:'✅',bg:C.householdBg,text:'Петко изпълни "Кухня"',sub:'Преди 2 мин · чака одобрение',unread:true},
+          {icon:'🏅',bg:C.challengeBg,text:'Елена спечели Badge "Стрийк"',sub:'Преди 15 мин',unread:true},
+          {icon:'⭐',bg:C.eventBg,text:'Бонус +50 точки от мама',sub:'Вчера 18:30',unread:false},
+        ].map((n,i)=>(
+          <div key={i} style={{
+            display:'flex',alignItems:'flex-start',gap:10,padding:'10px 14px',
+            borderBottom:i<2?`1px solid ${C.border}`:'none',
+            background:n.unread?C.mustDo+'05':'transparent',
+          }}>
+            <div style={{
+              width:36,height:36,borderRadius:10,background:n.bg,
+              display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0,
+            }}>{n.icon}</div>
+            <div>
+              <div style={{fontSize:12,fontWeight:n.unread?600:400,color:C.text,lineHeight:1.4}}>{n.text}</div>
+              <div style={{fontSize:10,color:C.text3,marginTop:2}}>{n.sub}</div>
+            </div>
+            {n.unread && <div style={{width:8,height:8,borderRadius:'50%',background:C.mustDo,flexShrink:0,marginTop:4}}/>}
+          </div>
+        ))}
+      </Card>
+    </div>
+  </div>
+);
+
+// ─── SECTION 11: Dark mode tokens ─────────────────────────────────────────
+
+const DarkModeArtboard = () => {
+  const darkTokens = [
+    {name:'bg',light:'#f5f2ee',dark:'#141210'},
+    {name:'surface',light:'#ffffff',dark:'#1e1a16'},
+    {name:'surface-2',light:'#f0ece6',dark:'#252118'},
+    {name:'border',light:'#e4dfd8',dark:'#2e2922'},
+    {name:'text',light:'#1e1a16',dark:'#f0ece6'},
+    {name:'text-2',light:'#6b6460',dark:'#9e9a96'},
+    {name:'text-3',light:'#9e9a96',dark:'#6b6460'},
+  ];
+  return (
+    <div style={{fontFamily:'DM Sans,sans-serif',padding:24,width:580}}>
+      <SectionLabel>Light → Dark token mapping</SectionLabel>
+      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:20}}>
+        {darkTokens.map(t=>(
+          <div key={t.name} style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:120,fontSize:12,fontWeight:600,color:C.text,fontFamily:'monospace'}}>--{t.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:32,height:32,borderRadius:6,background:t.light,border:`1px solid ${C.border}`}}/>
+              <div style={{fontSize:11,color:C.text3,fontFamily:'monospace'}}>{t.light}</div>
+            </div>
+            <div style={{fontSize:12,color:C.text3}}>→</div>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:32,height:32,borderRadius:6,background:t.dark,border:`1px solid #333`}}/>
+              <div style={{fontSize:11,color:C.text3,fontFamily:'monospace'}}>{t.dark}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dark mode preview snippet */}
+      <SectionLabel>Dark mode preview</SectionLabel>
+      <div style={{
+        background:'#141210',borderRadius:16,padding:16,
+        border:'1px solid #2e2922',
+      }}>
+        <div style={{
+          background:'#1e1a16',borderRadius:12,padding:'10px 14px',
+          border:'1px solid #2e2922',marginBottom:10,
+        }}>
+          <div style={{fontSize:13,fontWeight:600,color:'#f0ece6',marginBottom:4}}>Изчисти кухнята</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <Pill color={C.household} bg={C.household+'25'} small>Household</Pill>
+            <span style={{fontSize:11,color:'#6b6460'}}>30 мин · Днес</span>
+            <div style={{marginLeft:'auto',fontSize:13,fontWeight:700,color:C.challenge,fontFamily:'Nunito,sans-serif'}}>+15 ⭐</div>
+          </div>
+        </div>
+        <div style={{
+          background:'#1e1a16',borderRadius:12,padding:'10px 14px',
+          border:'1px solid #2e2922',
+        }}>
+          <div style={{fontSize:13,fontWeight:600,color:'#f0ece6',marginBottom:4}}>Пиано урок 🎹</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <Pill color={C.event} bg={C.event+'25'} small>Event</Pill>
+            <span style={{fontSize:11,color:'#6b6460'}}>16:00 · 45 мин</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Root render ───────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="foundation" title="Foundation" subtitle="Colors · Typography · Spacing">
+      <DCArtboard id="colors" label="Color palette" width={660} height={340}>
+        <ColorsArtboard/>
+      </DCArtboard>
+      <DCArtboard id="type" label="Typography scale" width={560} height={560}>
+        <TypographyArtboard/>
+      </DCArtboard>
+      <DCArtboard id="spacing" label="Spacing · Radius · Shadows" width={640} height={340}>
+        <SpacingArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="controls" title="Controls & Forms" subtitle="Buttons · Inputs · Toggles">
+      <DCArtboard id="buttons" label="Buttons & inputs" width={560} height={520}>
+        <ButtonsArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="calendar" title="Calendar" subtitle="Week view · Task blocks · Event blocks">
+      <DCArtboard id="calview" label="Week view (full)" width={700} height={380}>
+        <CalendarArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="tasks" title="Tasks" subtitle="TaskCard · States · Lifecycle">
+      <DCArtboard id="taskcards" label="Task cards — all types & states" width={780} height={260}>
+        <TaskCardsArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="gamification" title="Points & Gamification" subtitle="Points · Streaks · Badges · Ledger">
+      <DCArtboard id="pts" label="Points, streaks & badges" width={560} height={560}>
+        <GamificationArtboard/>
+      </DCArtboard>
+      <DCArtboard id="wishes" label="Wish / Reward cards" width={720} height={260}>
+        <WishArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="roles" title="Role-based UI" subtitle="young_child · parent · permissions">
+      <DCArtboard id="rolescards" label="Role variants & permission matrix" width={900} height={420}>
+        <RolesArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="shell" title="Navigation & Shell" subtitle="Bottom nav · Profile switcher · Notifications">
+      <DCArtboard id="nav" label="Shell components" width={860} height={380}>
+        <ShellArtboard/>
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="darkmode" title="Dark Mode" subtitle="Token mapping · Preview">
+      <DCArtboard id="dark" label="Dark mode tokens & preview" width={580} height={460}>
+        <DarkModeArtboard/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

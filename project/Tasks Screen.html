@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /tasks</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#1a1612;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:40px 24px;gap:48px;flex-wrap:wrap;
+}
+::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const TYPES = {
+  household:{label:'Домашно',color:T.household,bg:T.householdBg},
+  must_do:  {label:'Must‑do', color:T.mustDo,  bg:T.mustDoBg},
+  ongoing:  {label:'Ежедневно',color:T.ongoing,bg:T.ongoingBg},
+  challenge:{label:'Предизвик.',color:T.challenge,bg:T.challengeBg},
+  baseline: {label:'Базово',  color:T.baseline,bg:T.baselineBg},
+};
+
+const STATUSES = {
+  active:           {label:'Активни',   color:T.ongoing,   dot:'#4a90d9'},
+  pending_approval: {label:'Чакат',     color:T.challenge, dot:'#f5a623'},
+  approved:         {label:'Одобрени',  color:T.household, dot:'#2cb5a0'},
+  rejected:         {label:'Отхвърлени',color:T.mustDo,    dot:'#f06449'},
+};
+
+const MEMBERS = [
+  {id:'mama', name:'Мама',  init:'М', color:T.avatars[0]},
+  {id:'petko',name:'Петко', init:'П', color:T.avatars[1]},
+  {id:'elena',name:'Елена', init:'Е', color:T.avatars[2]},
+  {id:'ivan', name:'Иван',  init:'И', color:T.avatars[3]},
+];
+
+const REWARD_ICONS = {none:'—', fixed:'🎯', choice:'🎲', mystery:'🎁'};
+
+const TASKS = [
+  {id:1, title:'Изчисти кухнята', type:'household', status:'active', assignees:[0,1], pts:15, due:'Днес', streak:0, reward:'fixed', rewardLabel:'+15 т.'},
+  {id:2, title:'Домашно по математика', type:'must_do', status:'pending_approval', assignees:[2], pts:20, due:'Днес', streak:7, reward:'mystery', rewardLabel:'???'},
+  {id:3, title:'Сутрешен спорт', type:'challenge', status:'approved', assignees:[1], pts:25, due:'Всеки ден', streak:14, reward:'choice', rewardLabel:'Избор'},
+  {id:4, title:'Прочети 20 минути', type:'ongoing', status:'active', assignees:[2,3], pts:10, due:'Утре', streak:3, reward:'fixed', rewardLabel:'+10 т.'},
+  {id:5, title:'Провери заданието', type:'baseline', status:'rejected', assignees:[1], pts:0, due:'Вчера', streak:0, reward:'none', rewardLabel:'—'},
+  {id:6, title:'Наредете масата', type:'household', status:'active', assignees:[0,2], pts:10, due:'Днес', streak:0, reward:'none', rewardLabel:'—'},
+  {id:7, title:'Пране + прибиране', type:'household', status:'pending_approval', assignees:[0], pts:20, due:'Утре', streak:2, reward:'fixed', rewardLabel:'+20 т.'},
+  {id:8, title:'Упражнения пиано', type:'ongoing', status:'active', assignees:[2], pts:15, due:'Утре', streak:5, reward:'fixed', rewardLabel:'+15 т.'},
+  {id:9, title:'Спортувай 30 мин', type:'challenge', status:'active', assignees:[3], pts:20, due:'Днес', streak:1, reward:'mystery', rewardLabel:'???'},
+  {id:10,title:'Почисти стаята', type:'household', status:'approved', assignees:[1], pts:15, due:'Днес', streak:0, reward:'fixed', rewardLabel:'+15 т.'},
+];
+
+// ── Micro components ──────────────────────────────────────────────────────
+
+const Av = ({m, size=24}) => (
+  <div style={{
+    width:size,height:size,borderRadius:'50%',background:m.color,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:'#fff',fontSize:size*0.38,fontWeight:700,fontFamily:'Nunito,sans-serif',
+    flexShrink:0,border:'1.5px solid #fff',
+  }}>{m.init}</div>
+);
+
+const Pill = ({color,bg,children,small}) => (
+  <span style={{
+    display:'inline-flex',alignItems:'center',
+    background:bg||color+'18',color,
+    border:`1px solid ${color}30`,
+    borderRadius:99,padding:small?'2px 7px':'3px 9px',
+    fontSize:small?10:11,fontWeight:600,
+    fontFamily:'DM Sans,sans-serif',letterSpacing:'0.01em',
+  }}>{children}</span>
+);
+
+const BottomNav = ({active=1}) => {
+  const tabs=[
+    {icon:'📅',label:'Календар'},
+    {icon:'✅',label:'Задачи'},
+    {icon:'🎁',label:'Желания'},
+    {icon:'👤',label:'Профил'},
+  ];
+  return (
+    <div style={{display:'flex',justifyContent:'space-around',padding:'8px 0 2px',
+      borderTop:`1px solid ${T.border}`,background:'#fff',flexShrink:0}}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{
+          display:'flex',flexDirection:'column',alignItems:'center',gap:2,
+          padding:'4px 12px',borderRadius:12,
+          background:i===active?T.mustDo+'12':'transparent',minWidth:56,
+        }}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Full task card
+const TaskCard = ({task, compact=false}) => {
+  const tp = TYPES[task.type];
+  const st = STATUSES[task.status];
+  return (
+    <div style={{
+      background:T.surface,borderRadius:12,
+      border:`1px solid ${T.border}`,
+      boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
+      overflow:'hidden',
+    }}>
+      {/* Top color bar */}
+      <div style={{height:3,background:tp.color}}/>
+      <div style={{padding:'10px 12px'}}>
+        {/* Type + streak row */}
+        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+          <Pill color={tp.color} bg={tp.bg} small>{tp.label}</Pill>
+          {task.streak>=3 && (
+            <span style={{fontSize:11,fontWeight:700,color:'#c77700'}}>🔥 {task.streak}</span>
+          )}
+          <div style={{marginLeft:'auto'}}>
+            <span style={{fontSize:10,color:T.text3}}>{task.due}</span>
+          </div>
+        </div>
+
+        {/* Title */}
+        <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:8,lineHeight:1.35}}>
+          {task.title}
+        </div>
+
+        {/* Bottom row: assignees + points + reward */}
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          {/* Assignees */}
+          <div style={{display:'flex'}}>
+            {task.assignees.map((ai,i)=>(
+              <div key={i} style={{marginLeft:i>0?-6:0,zIndex:task.assignees.length-i}}>
+                <Av m={MEMBERS[ai]} size={22}/>
+              </div>
+            ))}
+          </div>
+
+          {/* Points */}
+          {task.pts>0 && (
+            <div style={{
+              background:T.challengeBg,borderRadius:99,padding:'2px 8px',
+              fontSize:11,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif',
+              display:'flex',alignItems:'center',gap:3,
+            }}>⭐ {task.pts}</div>
+          )}
+
+          {/* Reward */}
+          {task.reward!=='none' && (
+            <div style={{
+              background:T.eventBg,borderRadius:99,padding:'2px 8px',
+              fontSize:11,fontWeight:600,color:T.event,
+              display:'flex',alignItems:'center',gap:3,
+            }}>
+              {REWARD_ICONS[task.reward]} {task.rewardLabel}
+            </div>
+          )}
+
+          {/* Status dot */}
+          <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:st.dot}}/>
+            <span style={{fontSize:9,fontWeight:600,color:st.dot}}>{st.label}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Empty column state
+const EmptyColumn = ({status}) => (
+  <div style={{
+    background:T.surf2,borderRadius:12,border:`1.5px dashed ${T.border}`,
+    padding:'24px 12px',textAlign:'center',
+  }}>
+    <div style={{fontSize:24,marginBottom:6}}>
+      {status==='active'?'🎉':status==='approved'?'✨':'📭'}
+    </div>
+    <div style={{fontSize:12,fontWeight:600,color:T.text2}}>
+      {status==='active'?'Всички задачи изпълнени!':status==='approved'?'Нищо одобрено':'Нищо тук'}
+    </div>
+    <div style={{fontSize:11,color:T.text3,marginTop:3}}>
+      {status==='active'?'Супер работа 🙌':''}
+    </div>
+  </div>
+);
+
+// Filter chip
+const FilterChip = ({label, active, color, onClick}) => (
+  <div onClick={onClick} style={{
+    display:'inline-flex',alignItems:'center',gap:4,
+    background: active ? (color||T.mustDo) : T.surface,
+    color: active ? '#fff' : T.text2,
+    border:`1px solid ${active?(color||T.mustDo):T.border}`,
+    borderRadius:99,padding:'5px 12px',
+    fontSize:11,fontWeight:600,cursor:'pointer',flexShrink:0,
+    transition:'all 0.15s',
+  }}>{label}</div>
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Kanban Board (хоризонтален scroll)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [typeFilter, setTypeFilter] = React.useState(null);
+  const [memberFilter, setMember] = React.useState(null);
+  const [onlyMine, setOnlyMine] = React.useState(false);
+
+  const filtered = TASKS.filter(t => {
+    if(typeFilter && t.type!==typeFilter) return false;
+    if(memberFilter!==null && !t.assignees.includes(memberFilter)) return false;
+    if(onlyMine && !t.assignees.includes(0)) return false;
+    return true;
+  });
+
+  const byStatus = (st) => filtered.filter(t=>t.status===st);
+
+  const columns = [
+    {id:'active',          label:'Активни',    color:T.ongoing,   icon:'●'},
+    {id:'pending_approval',label:'Чакат одобрение',color:T.challenge,icon:'◐'},
+    {id:'approved',        label:'Одобрени',   color:T.household, icon:'✓'},
+    {id:'rejected',        label:'Отхвърлени', color:T.mustDo,    icon:'✕'},
+  ];
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 14px 0',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Задачи</div>
+          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+            <div style={{
+              background:T.mustDoBg,borderRadius:99,padding:'4px 8px',
+              fontSize:11,fontWeight:700,color:T.mustDo,
+              display:'flex',alignItems:'center',gap:3,
+            }}>⏳ {byStatus('pending_approval').length}</div>
+            <div style={{
+              width:32,height:32,borderRadius:8,background:T.surf2,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:15,cursor:'pointer',
+            }}>⚙</div>
+          </div>
+        </div>
+
+        {/* Filter row 1: mine / members */}
+        <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:8}}>
+          <FilterChip label="Само моите" active={onlyMine} onClick={()=>setOnlyMine(!onlyMine)}/>
+          {MEMBERS.map((m,i)=>(
+            <FilterChip key={m.id} label={m.name} active={memberFilter===i} color={m.color}
+              onClick={()=>setMember(memberFilter===i?null:i)}/>
+          ))}
+        </div>
+
+        {/* Filter row 2: type */}
+        <div style={{display:'flex',gap:6,overflowX:'auto',paddingBottom:10}}>
+          {Object.entries(TYPES).map(([k,v])=>(
+            <FilterChip key={k} label={v.label} active={typeFilter===k} color={v.color}
+              onClick={()=>setTypeFilter(typeFilter===k?null:k)}/>
+          ))}
+        </div>
+      </div>
+
+      {/* Board columns */}
+      <div style={{flex:1,overflowX:'auto',overflowY:'hidden',display:'flex',gap:12,padding:'12px 12px',alignItems:'flex-start'}}>
+        {columns.map(col=>{
+          const tasks = byStatus(col.id);
+          return (
+            <div key={col.id} style={{
+              width:240,flexShrink:0,display:'flex',flexDirection:'column',gap:0,
+            }}>
+              {/* Column header */}
+              <div style={{
+                display:'flex',alignItems:'center',gap:6,marginBottom:8,
+                padding:'6px 10px',background:'#fff',borderRadius:10,
+                border:`1px solid ${T.border}`,
+              }}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:col.color}}/>
+                <span style={{fontSize:12,fontWeight:700,color:T.text,flex:1}}>{col.label}</span>
+                <span style={{
+                  background:col.color+'18',color:col.color,
+                  borderRadius:99,padding:'1px 8px',fontSize:11,fontWeight:700,
+                  fontFamily:'Nunito,sans-serif',
+                }}>{tasks.length}</span>
+              </div>
+
+              {/* Cards */}
+              <div style={{display:'flex',flexDirection:'column',gap:8,overflowY:'auto',maxHeight:520}}>
+                {tasks.length===0
+                  ? <EmptyColumn status={col.id}/>
+                  : tasks.map(t=><TaskCard key={t.id} task={t}/>)
+                }
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* FAB */}
+      <div style={{position:'absolute',bottom:72,right:16,
+        width:48,height:48,borderRadius:'50%',background:T.mustDo,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        color:'#fff',fontSize:24,boxShadow:`0 4px 16px ${T.mustDo}60`,
+        cursor:'pointer',zIndex:10,
+      }}>＋</div>
+
+      <BottomNav active={1}/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Smart List (grouped by date/priority)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantB = () => {
+  const [statusFilter, setStatus] = React.useState('all');
+  const [typeFilter, setType] = React.useState(null);
+  const [expandedGroups, setExpanded] = React.useState({today:true,tomorrow:true,later:false,done:false});
+
+  const statusTabs = [
+    {id:'all',   label:'Всички'},
+    {id:'active',label:'Активни',color:T.ongoing},
+    {id:'pending_approval',label:'Чакат',color:T.challenge},
+    {id:'approved',label:'Готово',color:T.household},
+  ];
+
+  const groups = [
+    {id:'today',   label:'Днес',       tasks: TASKS.filter(t=>{
+      if(statusFilter!=='all'&&t.status!==statusFilter) return false;
+      if(typeFilter&&t.type!==typeFilter) return false;
+      return t.due==='Днес';
+    })},
+    {id:'tomorrow',label:'Утре',       tasks: TASKS.filter(t=>{
+      if(statusFilter!=='all'&&t.status!==statusFilter) return false;
+      if(typeFilter&&t.type!==typeFilter) return false;
+      return t.due==='Утре';
+    })},
+    {id:'later',   label:'По-късно',   tasks: TASKS.filter(t=>{
+      if(statusFilter!=='all'&&t.status!==statusFilter) return false;
+      if(typeFilter&&t.type!==typeFilter) return false;
+      return t.due==='Всеки ден';
+    })},
+    {id:'done',    label:'Приключени', tasks: TASKS.filter(t=>{
+      if(typeFilter&&t.type!==typeFilter) return false;
+      return ['approved','rejected'].includes(t.status);
+    })},
+  ];
+
+  const toggleGroup = (id) => setExpanded(e=>({...e,[id]:!e[id]}));
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 14px 0',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Задачи</div>
+          <div style={{display:'flex',gap:6}}>
+            <div style={{
+              background:T.mustDoBg,borderRadius:99,padding:'4px 8px',
+              fontSize:11,fontWeight:700,color:T.mustDo,
+              display:'flex',alignItems:'center',gap:3,
+            }}>⏳ {TASKS.filter(t=>t.status==='pending_approval').length}</div>
+            <div style={{
+              width:32,height:32,borderRadius:8,background:T.surf2,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:15,cursor:'pointer',
+            }}>⊞</div>
+          </div>
+        </div>
+
+        {/* Status tabs */}
+        <div style={{display:'flex',gap:0,borderBottom:`1px solid ${T.border}`,marginBottom:0}}>
+          {statusTabs.map(tab=>(
+            <div key={tab.id} onClick={()=>setStatus(tab.id)} style={{
+              padding:'7px 10px',fontSize:12,fontWeight:600,cursor:'pointer',
+              color:statusFilter===tab.id?(tab.color||T.text):T.text3,
+              borderBottom:`2px solid ${statusFilter===tab.id?(tab.color||T.text):'transparent'}`,
+              transition:'all 0.15s',flexShrink:0,
+            }}>{tab.label}</div>
+          ))}
+        </div>
+
+        {/* Type filter chips */}
+        <div style={{display:'flex',gap:6,overflowX:'auto',padding:'8px 0 10px'}}>
+          {Object.entries(TYPES).map(([k,v])=>(
+            <FilterChip key={k} label={v.label} active={typeFilter===k} color={v.color}
+              onClick={()=>setType(typeFilter===k?null:k)}/>
+          ))}
+        </div>
+      </div>
+
+      {/* Groups */}
+      <div style={{flex:1,overflowY:'auto',padding:'8px 12px',display:'flex',flexDirection:'column',gap:4}}>
+        {groups.map(group=>(
+          <div key={group.id}>
+            {/* Group header */}
+            <div
+              onClick={()=>toggleGroup(group.id)}
+              style={{
+                display:'flex',alignItems:'center',gap:8,
+                padding:'8px 4px',cursor:'pointer',
+              }}
+            >
+              <span style={{fontSize:12,fontWeight:700,color:T.text2,flex:1,textTransform:'uppercase',letterSpacing:'0.06em'}}>{group.label}</span>
+              <span style={{
+                background:T.surf2,borderRadius:99,padding:'1px 8px',
+                fontSize:11,fontWeight:700,color:T.text3,fontFamily:'Nunito,sans-serif',
+              }}>{group.tasks.length}</span>
+              <span style={{fontSize:11,color:T.text3}}>{expandedGroups[group.id]?'▲':'▼'}</span>
+            </div>
+
+            {/* Tasks */}
+            {expandedGroups[group.id] && (
+              <div style={{display:'flex',flexDirection:'column',gap:7,marginBottom:4}}>
+                {group.tasks.length===0
+                  ? (
+                    <div style={{
+                      background:T.surf2,borderRadius:10,border:`1.5px dashed ${T.border}`,
+                      padding:'16px',textAlign:'center',fontSize:12,color:T.text3,
+                    }}>
+                      {group.id==='today'?'🎉 Всички задачи за днес са готови!':'Нищо тук'}
+                    </div>
+                  )
+                  : group.tasks.map(t=>(
+                    <div key={t.id} style={{
+                      background:T.surface,borderRadius:12,
+                      border:`1px solid ${T.border}`,
+                      boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+                      overflow:'hidden',
+                    }}>
+                      <div style={{height:3,background:TYPES[t.type].color}}/>
+                      <div style={{padding:'9px 12px'}}>
+                        {/* Row 1: type + streak + due */}
+                        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:5}}>
+                          <Pill color={TYPES[t.type].color} bg={TYPES[t.type].bg} small>{TYPES[t.type].label}</Pill>
+                          {t.streak>=3&&<span style={{fontSize:10,fontWeight:700,color:'#c77700'}}>🔥{t.streak}</span>}
+                          <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:4}}>
+                            <div style={{width:6,height:6,borderRadius:'50%',background:STATUSES[t.status].dot}}/>
+                            <span style={{fontSize:9,color:STATUSES[t.status].dot,fontWeight:600}}>{STATUSES[t.status].label}</span>
+                          </div>
+                        </div>
+                        {/* Row 2: title */}
+                        <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:7,lineHeight:1.3}}>{t.title}</div>
+                        {/* Row 3: avatars + pts + reward */}
+                        <div style={{display:'flex',alignItems:'center',gap:5}}>
+                          <div style={{display:'flex'}}>
+                            {t.assignees.map((ai,i)=>(
+                              <div key={i} style={{marginLeft:i>0?-5:0}}>
+                                <Av m={MEMBERS[ai]} size={20}/>
+                              </div>
+                            ))}
+                          </div>
+                          {t.pts>0&&(
+                            <div style={{background:T.challengeBg,borderRadius:99,padding:'1px 7px',fontSize:10,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',gap:2}}>⭐{t.pts}</div>
+                          )}
+                          {t.reward!=='none'&&(
+                            <div style={{background:T.eventBg,borderRadius:99,padding:'1px 7px',fontSize:10,fontWeight:600,color:T.event}}>{REWARD_ICONS[t.reward]} {t.rewardLabel}</div>
+                          )}
+                          {/* Quick action for active tasks */}
+                          {t.status==='active'&&(
+                            <div style={{marginLeft:'auto',
+                              width:28,height:28,borderRadius:8,
+                              background:T.household+'20',border:`1px solid ${T.household}40`,
+                              display:'flex',alignItems:'center',justifyContent:'center',
+                              fontSize:14,color:T.household,cursor:'pointer',
+                            }}>✓</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+        ))}
+        <div style={{height:80}}/>
+      </div>
+
+      {/* FAB */}
+      <div style={{position:'absolute',bottom:72,right:16,
+        width:48,height:48,borderRadius:'50%',background:T.mustDo,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        color:'#fff',fontSize:24,boxShadow:`0 4px 16px ${T.mustDo}60`,
+        cursor:'pointer',zIndex:10,
+      }}>＋</div>
+
+      <BottomNav active={1}/>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="tasks" title="/tasks — Табло с обяви" subtitle="Mobile · 375px · Parent role · Пълни карти">
+      <DCArtboard id="kanban" label="A · Kanban Board" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="list" label="B · Smart List (по дата)" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

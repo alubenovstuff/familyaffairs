@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — Login & Onboarding</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#1a1612;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:40px 24px;gap:48px;flex-wrap:wrap;}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(0.7);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideBack{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+@keyframes confetti{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(100px) rotate(720deg);opacity:0}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', challengeBg:'#fef6e8',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+// ── Shared micro ──────────────────────────────────────────────────────────
+
+const Input = ({label, placeholder, type='text', value, onChange, error}) => (
+  <div>
+    {label && <div style={{fontSize:12,fontWeight:600,color:T.text,marginBottom:5}}>{label}</div>}
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      style={{
+        width:'100%',borderRadius:10,padding:'12px 14px',fontSize:14,
+        border:`1.5px solid ${error?'#e53e3e':T.border}`,
+        background:'#fff',color:T.text,fontFamily:'DM Sans,sans-serif',outline:'none',
+        transition:'border-color 0.15s',
+      }}/>
+    {error && <div style={{fontSize:11,color:'#e53e3e',marginTop:3}}>{error}</div>}
+  </div>
+);
+
+const PrimaryBtn = ({children, onClick, color, disabled, loading}) => (
+  <div onClick={disabled||loading?null:onClick} style={{
+    background:disabled?T.border:(color||T.mustDo),
+    borderRadius:12,padding:'14px',textAlign:'center',
+    cursor:disabled||loading?'not-allowed':'pointer',
+    boxShadow:disabled?'none':`0 4px 16px ${color||T.mustDo}40`,
+    transition:'all 0.15s',animation:loading?'pulse 1s infinite':'none',
+  }}>
+    <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>{loading?'...' :children}</span>
+  </div>
+);
+
+const Confetti = () => {
+  const colors=[T.challenge,T.mustDo,T.household,T.ongoing,T.event,'#e85d75'];
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,height:160,overflow:'hidden',pointerEvents:'none',zIndex:30}}>
+      {Array.from({length:26},(_,i)=>(
+        <div key={i} style={{
+          position:'absolute',top:-10,left:`${3+(i*3.7)%94}%`,
+          width:5+(i%3)*3,height:5+(i%3)*3,
+          borderRadius:i%3===0?'50%':2,background:colors[i%colors.length],
+          animation:`confetti ${0.9+i*0.04}s ${i*0.04}s ease-out forwards`,
+        }}/>
+      ))}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOGIN / REGISTER
+// ════════════════════════════════════════════════════════════════════════════
+
+const LoginScreen = () => {
+  const [mode,     setMode]  = React.useState('login'); // login | register | forgot
+  const [email,    setEmail] = React.useState('');
+  const [password, setPass]  = React.useState('');
+  const [name,     setName]  = React.useState('');
+  const [loading,  setLoad]  = React.useState(false);
+  const [done,     setDone]  = React.useState(false);
+  const [dir,      setDir]   = React.useState('forward');
+
+  const switchMode = (m) => { setDir(m==='login'?'back':'forward'); setMode(m); };
+
+  const submit = () => {
+    if(!email) return;
+    setLoad(true);
+    setTimeout(()=>{ setLoad(false); setDone(true); },900);
+  };
+
+  if(done) return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#fff',fontFamily:'DM Sans,sans-serif',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative'}}>
+      <Confetti/>
+      <div style={{animation:'pop 0.5s cubic-bezier(.2,.7,.3,1)'}}>
+        <div style={{fontSize:64,marginBottom:16,animation:'float 3s infinite'}}>🏠</div>
+        <div style={{fontSize:22,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:8}}>
+          {mode==='login'?'Добре дошъл!':'Акаунтът е създаден!'}
+        </div>
+        <div style={{fontSize:13,color:T.text2,marginBottom:28,lineHeight:1.6}}>
+          {mode==='login'?'Влизаш в семейния си акаунт…':'Готов си да създадеш своето семейство.'}
+        </div>
+        <div style={{
+          background:T.mustDo,borderRadius:12,padding:'13px 28px',
+          display:'inline-block',cursor:'pointer',
+          boxShadow:`0 4px 16px ${T.mustDo}40`,
+          animation:'fadeUp 0.3s 0.4s ease-out both',
+        }}>
+          <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>→ Към приложението</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#fff',fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Hero top */}
+      <div style={{
+        background:`linear-gradient(160deg, ${T.mustDo}18 0%, ${T.challenge}12 50%, ${T.household}10 100%)`,
+        padding:'48px 24px 28px',flexShrink:0,position:'relative',overflow:'hidden',
+      }}>
+        {/* Decorative circles */}
+        <div style={{position:'absolute',top:-50,right:-40,width:160,height:160,borderRadius:'50%',background:T.mustDo+'10'}}/>
+        <div style={{position:'absolute',bottom:-30,left:-30,width:120,height:120,borderRadius:'50%',background:T.challenge+'10'}}/>
+
+        <div style={{position:'relative',textAlign:'center'}}>
+          {/* Logo */}
+          <div style={{
+            width:72,height:72,borderRadius:22,
+            background:`linear-gradient(135deg, ${T.mustDo}, ${T.challenge})`,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:36,margin:'0 auto 16px',
+            boxShadow:`0 8px 24px ${T.mustDo}40`,
+            animation:'float 4s infinite',
+          }}>🏠</div>
+          <div style={{fontSize:26,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>FamilyAffairs</div>
+          <div style={{fontSize:13,color:T.text2}}>Семейният ви организатор</div>
+        </div>
+      </div>
+
+      {/* Form area */}
+      <div style={{
+        flex:1,overflowY:'auto',padding:'24px 20px',
+        animation:`${dir==='forward'?'slideIn':'slideBack'} 0.22s ease-out`,
+      }}>
+
+        {/* Mode tabs */}
+        {mode!=='forgot' && (
+          <div style={{display:'flex',background:T.surf2,borderRadius:12,padding:3,gap:2,marginBottom:24}}>
+            {[['login','Вход'],['register','Регистрация']].map(([m,label])=>(
+              <div key={m} onClick={()=>switchMode(m)} style={{
+                flex:1,padding:'9px',borderRadius:10,textAlign:'center',
+                fontSize:13,fontWeight:600,cursor:'pointer',
+                background:mode===m?'#fff':'transparent',
+                color:mode===m?T.text:T.text2,
+                boxShadow:mode===m?'0 1px 4px rgba(0,0,0,0.1)':'none',
+                transition:'all 0.15s',
+              }}>{label}</div>
+            ))}
+          </div>
+        )}
+
+        {mode==='forgot' && (
+          <div style={{marginBottom:20}}>
+            <div onClick={()=>switchMode('login')} style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',marginBottom:16}}>
+              <span style={{fontSize:16,color:T.text2}}>‹</span>
+              <span style={{fontSize:13,color:T.text2,fontWeight:500}}>Обратно към вход</span>
+            </div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Забравена парола</div>
+            <div style={{fontSize:13,color:T.text2}}>Ще изпратим линк за смяна на паролата.</div>
+          </div>
+        )}
+
+        <div style={{display:'flex',flexDirection:'column',gap:14}}>
+          {mode==='register' && (
+            <Input label="Твоето име" placeholder="напр. Мария Иванова" value={name} onChange={setName}/>
+          )}
+          <Input label="Имейл" type="email" placeholder="your@email.com" value={email} onChange={setEmail}/>
+          {mode!=='forgot' && (
+            <Input label="Парола" type="password" placeholder="••••••••" value={password} onChange={setPass}/>
+          )}
+
+          {mode==='login' && (
+            <div style={{textAlign:'right'}}>
+              <span onClick={()=>switchMode('forgot')} style={{fontSize:12,color:T.ongoing,fontWeight:600,cursor:'pointer'}}>
+                Забравена парола?
+              </span>
+            </div>
+          )}
+
+          <PrimaryBtn onClick={submit} loading={loading} disabled={!email||(mode!=='forgot'&&!password)}>
+            {mode==='login'?'Влез в акаунта':mode==='register'?'Създай акаунт':'Изпрати линк'}
+          </PrimaryBtn>
+
+          {/* Divider */}
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{flex:1,height:1,background:T.border}}/>
+            <span style={{fontSize:11,color:T.text3}}>или</span>
+            <div style={{flex:1,height:1,background:T.border}}/>
+          </div>
+
+          {/* Social */}
+          {[
+            {icon:'🔵',label:'Продължи с Google'},
+            {icon:'⚫',label:'Продължи с Apple'},
+          ].map(s=>(
+            <div key={s.label} style={{
+              display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+              border:`1.5px solid ${T.border}`,borderRadius:12,padding:'12px',
+              cursor:'pointer',background:'#fff',
+            }}>
+              <span style={{fontSize:18}}>{s.icon}</span>
+              <span style={{fontSize:13,fontWeight:600,color:T.text}}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {mode==='login' && (
+          <div style={{textAlign:'center',marginTop:20,fontSize:13,color:T.text3}}>
+            Нямаш акаунт?{' '}
+            <span onClick={()=>switchMode('register')} style={{color:T.mustDo,fontWeight:700,cursor:'pointer'}}>
+              Регистрирай се
+            </span>
+          </div>
+        )}
+
+        {/* Invite token hint */}
+        <div style={{
+          marginTop:16,background:T.challengeBg,borderRadius:10,
+          padding:'10px 14px',border:`1px solid ${T.challenge}30`,
+          display:'flex',alignItems:'center',gap:8,
+        }}>
+          <span style={{fontSize:16}}>📩</span>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,color:T.text}}>Имаш покана?</div>
+            <div style={{fontSize:11,color:T.text3}}>Отвори линка от имейла за автоматично свързване</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// ONBOARDING — multi-step wizard за нов parent
+// ════════════════════════════════════════════════════════════════════════════
+
+const ONBOARDING_STEPS = [
+  'Добре дошъл', 'Семейството', 'Първи член', 'Точки', 'Готово',
+];
+
+const AVATAR_COLORS = T.avatars;
+const ROLES = [
+  {id:'teen',        label:'Тийн',       desc:'13–17 г. · логин с имейл', icon:'🧑'},
+  {id:'child',       label:'Дете',        desc:'6–12 г. · профил смяна',   icon:'👦'},
+  {id:'young_child', label:'Малко дете', desc:'под 6 г. · само иконки',   icon:'👶'},
+  {id:'extended',    label:'Разширен',   desc:'Баба/дядо · само четене',  icon:'👴'},
+];
+
+const OnboardingScreen = () => {
+  const [step,        setStep]       = React.useState(0);
+  const [dir,         setDir]        = React.useState('forward');
+  const [familyName,  setFamilyName] = React.useState('');
+  const [timezone,    setTimezone]   = React.useState('Europe/Sofia');
+  const [memberName,  setMemberName] = React.useState('');
+  const [memberRole,  setMemberRole] = React.useState('child');
+  const [avatarColor, setAvatar]     = React.useState(T.avatars[2]);
+  const [dailyBase,   setDailyBase]  = React.useState(10);
+  const [members,     setMembers]    = React.useState([]);
+  const [showConfetti,setConfetti]   = React.useState(false);
+
+  const goNext = () => {
+    if(step===ONBOARDING_STEPS.length-2) setConfetti(true);
+    setDir('forward'); setStep(s=>s+1);
+  };
+  const goBack = () => { setDir('back'); setStep(s=>s-1); };
+
+  const addMember = () => {
+    if(!memberName.trim()) return;
+    setMembers(ms=>[...ms,{name:memberName,role:memberRole,color:avatarColor}]);
+    setMemberName('');
+    setAvatar(T.avatars[members.length+1]||T.avatars[0]);
+  };
+
+  const pct = Math.round((step/(ONBOARDING_STEPS.length-1))*100);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#fff',fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+      {showConfetti && <Confetti/>}
+
+      {/* Progress top bar */}
+      <div style={{
+        background:'#fff',borderBottom:`1px solid ${T.border}`,
+        padding:'10px 16px 12px',flexShrink:0,
+      }}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+          {step>0 && step<ONBOARDING_STEPS.length-1 && (
+            <div onClick={goBack} style={{width:32,height:32,borderRadius:8,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:T.text2}}>‹</div>
+          )}
+          <div style={{flex:1}}>
+            <div style={{display:'flex',gap:3}}>
+              {ONBOARDING_STEPS.map((_,i)=>(
+                <div key={i} style={{
+                  flex:1,height:4,borderRadius:99,
+                  background:i<=step?T.mustDo:T.border,
+                  transition:'background 0.3s',
+                }}/>
+              ))}
+            </div>
+          </div>
+          <span style={{fontSize:11,color:T.text3,fontWeight:500,flexShrink:0}}>{step+1}/{ONBOARDING_STEPS.length}</span>
+        </div>
+      </div>
+
+      {/* Step content */}
+      <div style={{
+        flex:1,overflowY:'auto',padding:'24px 20px',
+        animation:`${dir==='forward'?'slideIn':'slideBack'} 0.22s ease-out`,
+      }}>
+
+        {/* STEP 0 — Welcome */}
+        {step===0 && (
+          <div style={{textAlign:'center',paddingTop:16}}>
+            <div style={{fontSize:72,marginBottom:20,animation:'float 3s infinite'}}>🏠</div>
+            <div style={{fontSize:24,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:8}}>
+              Добре дошъл в<br/>FamilyAffairs!
+            </div>
+            <div style={{fontSize:14,color:T.text2,lineHeight:1.7,marginBottom:32}}>
+              Ще те настроим за 3 минути.<br/>Ще създадем семейния ти профил и ще добавим членовете.
+            </div>
+            {/* Feature pills */}
+            {[
+              {icon:'📅',label:'Семеен календар за всички'},
+              {icon:'✅',label:'Задачи с точки и награди'},
+              {icon:'🔥',label:'Streak и значки за мотивация'},
+              {icon:'🎁',label:'Wish list за децата'},
+            ].map(f=>(
+              <div key={f.label} style={{
+                display:'flex',alignItems:'center',gap:10,
+                padding:'10px 14px',borderRadius:12,
+                background:T.surf2,marginBottom:8,textAlign:'left',
+              }}>
+                <span style={{fontSize:20}}>{f.icon}</span>
+                <span style={{fontSize:13,fontWeight:500,color:T.text}}>{f.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* STEP 1 — Family name */}
+        {step===1 && (
+          <div>
+            <div style={{fontSize:22,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Как се казва семейството?</div>
+            <div style={{fontSize:13,color:T.text2,marginBottom:24,lineHeight:1.6}}>Това ще се показва на всички членове в горната лента.</div>
+            <Input
+              label="Име на семейството"
+              placeholder="напр. Семейство Иванови"
+              value={familyName}
+              onChange={setFamilyName}
+            />
+            <div style={{marginTop:16}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.text,marginBottom:8}}>Часова зона</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {['Europe/Sofia','Europe/London','America/New_York','America/Los_Angeles'].map(tz=>(
+                  <div key={tz} onClick={()=>setTimezone(tz)} style={{
+                    padding:'10px 14px',borderRadius:10,cursor:'pointer',
+                    background:timezone===tz?T.mustDoBg:T.surf2,
+                    border:`1.5px solid ${timezone===tz?T.mustDo:T.border}`,
+                    fontSize:13,fontWeight:timezone===tz?700:400,
+                    color:timezone===tz?T.mustDo:T.text,
+                    display:'flex',alignItems:'center',justifyContent:'space-between',
+                    transition:'all 0.15s',
+                  }}>
+                    <span>{tz}</span>
+                    {timezone===tz && <span style={{color:T.mustDo}}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 — Add members */}
+        {step===2 && (
+          <div>
+            <div style={{fontSize:22,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Добави членове</div>
+            <div style={{fontSize:13,color:T.text2,marginBottom:20,lineHeight:1.6}}>Добави децата и другите членове. Можеш да добавяш и по-късно.</div>
+
+            {/* Added members */}
+            {members.length>0 && (
+              <div style={{marginBottom:16,display:'flex',flexDirection:'column',gap:6}}>
+                {members.map((m,i)=>(
+                  <div key={i} style={{
+                    display:'flex',alignItems:'center',gap:10,
+                    padding:'8px 12px',background:T.householdBg,borderRadius:10,
+                    border:`1px solid ${T.household}30`,
+                  }}>
+                    <div style={{width:32,height:32,borderRadius:'50%',background:m.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif',flexShrink:0}}>{m.name[0]}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:T.text}}>{m.name}</div>
+                      <div style={{fontSize:10,color:T.text3}}>{ROLES.find(r=>r.id===m.role)?.label}</div>
+                    </div>
+                    <div style={{color:T.household,fontSize:14}}>✓</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add form */}
+            <div style={{background:T.surf2,borderRadius:14,padding:'14px',marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>＋ Нов член</div>
+              <Input placeholder="Ime на члена" value={memberName} onChange={setMemberName}/>
+
+              <div style={{marginTop:10,marginBottom:10}}>
+                <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:6}}>Роля</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                  {ROLES.map(r=>(
+                    <div key={r.id} onClick={()=>setMemberRole(r.id)} style={{
+                      padding:'8px 10px',borderRadius:10,cursor:'pointer',
+                      background:memberRole===r.id?T.mustDoBg:'#fff',
+                      border:`1.5px solid ${memberRole===r.id?T.mustDo:T.border}`,
+                      transition:'all 0.12s',
+                    }}>
+                      <div style={{fontSize:16,marginBottom:2}}>{r.icon}</div>
+                      <div style={{fontSize:12,fontWeight:memberRole===r.id?700:500,color:memberRole===r.id?T.mustDo:T.text}}>{r.label}</div>
+                      <div style={{fontSize:10,color:T.text3}}>{r.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:6}}>Цвят на аватара</div>
+                <div style={{display:'flex',gap:8}}>
+                  {AVATAR_COLORS.map((c,i)=>(
+                    <div key={i} onClick={()=>setAvatar(c)} style={{
+                      width:32,height:32,borderRadius:'50%',background:c,cursor:'pointer',
+                      border:`3px solid ${avatarColor===c?'#fff':'transparent'}`,
+                      boxShadow:avatarColor===c?`0 0 0 2px ${c}`:'none',
+                      transition:'all 0.12s',
+                    }}/>
+                  ))}
+                </div>
+              </div>
+
+              <div onClick={addMember} style={{
+                background:memberName.trim()?T.household:T.border,
+                borderRadius:10,padding:'10px',textAlign:'center',cursor:memberName.trim()?'pointer':'not-allowed',
+                transition:'background 0.15s',
+              }}>
+                <span style={{fontSize:13,fontWeight:700,color:'#fff'}}>Добави члена</span>
+              </div>
+            </div>
+
+            {members.length===0 && (
+              <div style={{textAlign:'center',fontSize:12,color:T.text3}}>
+                Можеш да прескочиш и да добавиш членове по-късно
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 3 — Points setup */}
+        {step===3 && (
+          <div>
+            <div style={{fontSize:22,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Настрой точките</div>
+            <div style={{fontSize:13,color:T.text2,marginBottom:24,lineHeight:1.6}}>Всеки ден децата получават базови точки автоматично. Колко да са?</div>
+
+            {/* Daily base */}
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:10}}>Дневна база точки</div>
+              <div style={{display:'flex',gap:8}}>
+                {[5,10,15,20,25].map(v=>(
+                  <div key={v} onClick={()=>setDailyBase(v)} style={{
+                    flex:1,padding:'12px 4px',borderRadius:12,textAlign:'center',cursor:'pointer',
+                    background:dailyBase===v?T.challenge:T.surf2,
+                    border:`1.5px solid ${dailyBase===v?T.challenge:T.border}`,
+                    transition:'all 0.12s',
+                  }}>
+                    <div style={{fontSize:16,fontWeight:900,color:dailyBase===v?'#fff':T.text,fontFamily:'Nunito,sans-serif'}}>{v}</div>
+                    <div style={{fontSize:9,color:dailyBase===v?'rgba(255,255,255,0.8)':T.text3}}>т/ден</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Streak multipliers info */}
+            <div style={{
+              background:T.challengeBg,borderRadius:14,padding:'14px',
+              border:`1px solid ${T.challenge}30`,marginBottom:16,
+            }}>
+              <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
+                🔥 Streak мултипликатори
+              </div>
+              {[
+                {days:'1–6 дни',  mult:'×1.0', color:T.text3},
+                {days:'7–13 дни', mult:'×1.5', color:T.challenge},
+                {days:'14–29 дни',mult:'×2.0', color:T.mustDo},
+                {days:'30+ дни',  mult:'×3.0', color:T.event},
+              ].map(r=>(
+                <div key={r.days} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:`1px solid ${T.challenge}20`}}>
+                  <span style={{fontSize:12,color:T.text2}}>{r.days}</span>
+                  <span style={{fontSize:13,fontWeight:800,color:r.color,fontFamily:'Nunito,sans-serif'}}>{r.mult}</span>
+                </div>
+              ))}
+              <div style={{fontSize:10,color:T.text3,marginTop:8}}>Можеш да промениш тези настройки по-късно от Settings.</div>
+            </div>
+
+            {/* Preview */}
+            <div style={{background:'#fff',borderRadius:12,border:`1px solid ${T.border}`,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Пример</div>
+              {members.slice(0,2).map((m,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:i<1?8:0}}>
+                  <div style={{width:28,height:28,borderRadius:'50%',background:m.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif',flexShrink:0}}>{m.name[0]}</div>
+                  <span style={{fontSize:12,color:T.text,flex:1}}>{m.name}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>⭐ +{dailyBase}/ден</span>
+                </div>
+              ))}
+              {members.length===0 && (
+                <div style={{fontSize:12,color:T.text3}}>Добави членове за да видиш пример</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4 — Done! */}
+        {step===4 && (
+          <div style={{textAlign:'center',paddingTop:20}}>
+            <div style={{fontSize:72,marginBottom:16,animation:'float 3s infinite'}}>🎉</div>
+            <div style={{fontSize:24,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:8}}>
+              {familyName||'Семейство'} е готово!
+            </div>
+            <div style={{fontSize:13,color:T.text2,marginBottom:28,lineHeight:1.7}}>
+              Всичко е настроено. Вече можеш да започнеш да добавяш задачи и да организирате седмицата си.
+            </div>
+
+            {/* Summary */}
+            <div style={{background:T.surf2,borderRadius:14,padding:'14px',marginBottom:20,textAlign:'left'}}>
+              {[
+                {icon:'🏠',label:'Семейство',val:familyName||'—'},
+                {icon:'👨‍👩‍👧‍👦',label:'Членове',val:`${members.length} добавени`},
+                {icon:'⭐',label:'Дневна база',val:`${dailyBase} точки/ден`},
+                {icon:'🌍',label:'Часова зона',val:timezone},
+              ].map(r=>(
+                <div key={r.label} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:`1px solid ${T.border}`}}>
+                  <span style={{fontSize:16,width:24,textAlign:'center'}}>{r.icon}</span>
+                  <span style={{fontSize:12,color:T.text2,flex:1}}>{r.label}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:T.text}}>{r.val}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Invite hint */}
+            <div style={{
+              background:T.householdBg,borderRadius:12,padding:'12px 14px',
+              border:`1px solid ${T.household}30`,textAlign:'left',marginBottom:4,
+              display:'flex',alignItems:'flex-start',gap:10,
+            }}>
+              <span style={{fontSize:20}}>📩</span>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>Покани останалите членове</div>
+                <div style={{fontSize:11,color:T.text3,lineHeight:1.5}}>Родителите получават имейл покана. Децата влизат чрез Profile Switcher.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{height:24}}/>
+      </div>
+
+      {/* Action button */}
+      <div style={{background:'#fff',borderTop:`1px solid ${T.border}`,padding:'12px 20px',flexShrink:0}}>
+        {step<ONBOARDING_STEPS.length-1
+          ? <PrimaryBtn onClick={goNext} disabled={
+              (step===1&&!familyName.trim())
+            }>
+              {step===0?'Започни настройката →':step===2?(members.length>0?'Продължи →':'Прескочи →'):'Напред →'}
+            </PrimaryBtn>
+          : <PrimaryBtn color={T.household} onClick={()=>{}}>
+              🏠 Отвори семейния календар
+            </PrimaryBtn>
+        }
+      </div>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="auth" title="/login — Вход & Регистрация" subtitle="Mobile · Login · Register · Forgot password">
+      <DCArtboard id="login" label="Login / Register / Forgot" width={375} height={780}>
+        <LoginScreen/>
+      </DCArtboard>
+    </DCSection>
+    <DCSection id="onboarding" title="/onboarding — Настройка на семейство" subtitle="Mobile · Parent · 5 стъпки · Интерактивен">
+      <DCArtboard id="ob" label="Onboarding wizard (5 стъпки)" width={375} height={780}>
+        <OnboardingScreen/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

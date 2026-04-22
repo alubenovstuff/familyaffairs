@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — Badges</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#1a1612;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:40px 24px;gap:48px;flex-wrap:wrap;}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(0.6);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--c)}50%{box-shadow:0 0 22px var(--c)}}
+@keyframes floatBadge{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const TIER = {
+  bronze:    {label:'Бронз',     color:'#cd7f32', bg:'#fdf4e7', glow:'#cd7f3240'},
+  silver:    {label:'Сребро',    color:'#8a95a3', bg:'#f4f5f7', glow:'#8a95a330'},
+  gold:      {label:'Злато',     color:'#e8a838', bg:'#fffbf0', glow:'#e8a83840'},
+  legendary: {label:'Легендарен',color:'#8b5cf6', bg:'#f5f0ff', glow:'#8b5cf650'},
+};
+
+const BADGES = [
+  // Streak
+  {id:1,  icon:'🔥', name:'Стрийк 3',    tier:'bronze',    category:'streak',   desc:'3 дни поред',          progress:3,  goal:3,   earned:true,  earnedBy:[2,1]},
+  {id:2,  icon:'🔥', name:'Стрийк 7',    tier:'silver',    category:'streak',   desc:'7 дни поред',          progress:7,  goal:7,   earned:true,  earnedBy:[2]},
+  {id:3,  icon:'🔥', name:'Стрийк 14',   tier:'gold',      category:'streak',   desc:'14 дни поред',         progress:14, goal:14,  earned:true,  earnedBy:[2]},
+  {id:4,  icon:'🔥', name:'Стрийк 30',   tier:'legendary', category:'streak',   desc:'30 дни поред',         progress:14, goal:30,  earned:false, earnedBy:[]},
+  // Tasks
+  {id:5,  icon:'✅', name:'Първа задача', tier:'bronze',    category:'tasks',    desc:'Изпълни 1 задача',     progress:1,  goal:1,   earned:true,  earnedBy:[0,1,2,3]},
+  {id:6,  icon:'⚡', name:'Светкавица',   tier:'bronze',    category:'tasks',    desc:'3 задачи за 1 ден',    progress:2,  goal:3,   earned:false, earnedBy:[1]},
+  {id:7,  icon:'🏆', name:'10 задачи',   tier:'silver',    category:'tasks',    desc:'Изпълни 10 задачи',    progress:10, goal:10,  earned:true,  earnedBy:[0,1,2]},
+  {id:8,  icon:'🎯', name:'50 задачи',   tier:'gold',      category:'tasks',    desc:'Изпълни 50 задачи',    progress:47, goal:50,  earned:false, earnedBy:[2]},
+  {id:9,  icon:'👑', name:'100 задачи',  tier:'legendary', category:'tasks',    desc:'Изпълни 100 задачи',   progress:47, goal:100, earned:false, earnedBy:[]},
+  // Points
+  {id:10, icon:'⭐', name:'Пестелив',    tier:'bronze',    category:'points',   desc:'Спести 100 точки',     progress:100,goal:100, earned:true,  earnedBy:[0,1,2]},
+  {id:11, icon:'💰', name:'Богаташ',     tier:'silver',    category:'points',   desc:'Спечели 500 точки',    progress:340,goal:500, earned:false, earnedBy:[2]},
+  {id:12, icon:'💎', name:'Хиляда',      tier:'legendary', category:'points',   desc:'Спечели 1000 точки',   progress:340,goal:1000,earned:false, earnedBy:[]},
+  // Types
+  {id:13, icon:'🏠', name:'Домакин',     tier:'bronze',    category:'types',    desc:'5 домашни задачи',     progress:5,  goal:5,   earned:true,  earnedBy:[0,2]},
+  {id:14, icon:'📚', name:'Отличник',    tier:'silver',    category:'types',    desc:'10 must-do задачи',    progress:7,  goal:10,  earned:false, earnedBy:[2]},
+  {id:15, icon:'🌈', name:'Всестранен',  tier:'gold',      category:'types',    desc:'Всички 5 типа задачи', progress:3,  goal:5,   earned:false, earnedBy:[]},
+  // Family
+  {id:16, icon:'👨‍👩‍👧‍👦','name':'Семеен',   tier:'gold',      category:'family',   desc:'Цялото семейство активно 7 дни',progress:5,goal:7,earned:false,earnedBy:[]},
+  {id:17, icon:'🎉', name:'Заедно',      tier:'legendary', category:'family',   desc:'Семеен стрийк 30 дни', progress:5,  goal:30,  earned:false, earnedBy:[]},
+  // Special
+  {id:18, icon:'🌟', name:'Перфект',     tier:'gold',      category:'special',  desc:'7 дни без нито 1 пропуск',progress:7,goal:7,  earned:true,  earnedBy:[2]},
+  {id:19, icon:'🚀', name:'Рекордьор',   tier:'legendary', category:'special',  desc:'Надмини личен рекорд', progress:0,  goal:1,   earned:false, earnedBy:[]},
+  {id:20, icon:'🎪', name:'Изненада',    tier:'legendary', category:'special',  desc:'???',                  progress:0,  goal:1,   earned:false, earnedBy:[], mystery:true},
+];
+
+const CATEGORIES = [
+  {id:'all',    label:'Всички'},
+  {id:'streak', label:'🔥 Стрийк'},
+  {id:'tasks',  label:'✅ Задачи'},
+  {id:'points', label:'⭐ Точки'},
+  {id:'types',  label:'🌈 Типове'},
+  {id:'family', label:'👨‍👩‍👧‍👦 Семейство'},
+  {id:'special',label:'🌟 Специални'},
+];
+
+const MEMBERS = [
+  {name:'Мама',  init:'М', color:T.avatars[0]},
+  {name:'Петко', init:'П', color:T.avatars[1]},
+  {name:'Елена', init:'Е', color:T.avatars[2]},
+  {name:'Иван',  init:'И', color:T.avatars[3]},
+];
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const BottomNav = ({active=3}) => {
+  const tabs=[{icon:'📅',label:'Календар'},{icon:'✅',label:'Задачи'},{icon:'🎁',label:'Желания'},{icon:'👤',label:'Профил'}];
+  return (
+    <div style={{display:'flex',justifyContent:'space-around',padding:'8px 0 2px',borderTop:`1px solid ${T.border}`,background:'#fff',flexShrink:0}}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 12px',borderRadius:12,background:i===active?T.mustDo+'12':'transparent',minWidth:56}}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Badge detail sheet
+const BadgeSheet = ({badge, onClose}) => {
+  if(!badge) return null;
+  const tr = TIER[badge.tier];
+  const pct = Math.min(100, Math.round((badge.progress/badge.goal)*100));
+  return (
+    <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',zIndex:50,display:'flex',alignItems:'flex-end'}}
+      onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width:'100%',background:'#fff',borderRadius:'24px 24px 0 0',
+        padding:'24px 20px 36px',
+        animation:'fadeUp 0.25s cubic-bezier(.2,.7,.3,1)',
+      }}>
+        <div style={{width:40,height:4,borderRadius:99,background:T.border,margin:'0 auto 20px'}}/>
+
+        {/* Badge hero */}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:20}}>
+          <div style={{
+            width:88,height:88,borderRadius:24,
+            background:badge.earned?`linear-gradient(135deg,${tr.color}30,${tr.color}10)`:T.surf2,
+            border:`3px solid ${badge.earned?tr.color:T.border}`,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:40,marginBottom:12,
+            '--c':tr.glow,
+            animation:badge.earned?'glow 2s infinite, floatBadge 3s infinite':'none',
+            boxShadow:badge.earned?`0 4px 20px ${tr.color}40`:'none',
+            position:'relative',
+          }}>
+            {badge.mystery&&!badge.earned?'🔒':badge.icon}
+            {badge.earned && (
+              <div style={{
+                position:'absolute',bottom:-6,right:-6,
+                width:24,height:24,borderRadius:'50%',
+                background:tr.color,border:'3px solid #fff',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:11,color:'#fff',fontWeight:700,
+              }}>✓</div>
+            )}
+          </div>
+          <div style={{fontSize:20,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>{badge.mystery&&!badge.earned?'???':badge.name}</div>
+          <div style={{
+            display:'inline-flex',alignItems:'center',gap:4,
+            background:tr.bg,borderRadius:99,padding:'4px 12px',
+            fontSize:12,fontWeight:700,color:tr.color,border:`1px solid ${tr.color}30`,
+          }}>{tr.label}</div>
+        </div>
+
+        {/* Description */}
+        <div style={{
+          background:T.surf2,borderRadius:12,padding:'12px 14px',marginBottom:16,
+          textAlign:'center',
+        }}>
+          <div style={{fontSize:13,color:T.text2,lineHeight:1.5}}>
+            {badge.mystery&&!badge.earned?'Условието е скрито. Продължавай да се стараеш!':badge.desc}
+          </div>
+        </div>
+
+        {/* Progress */}
+        {!badge.earned && !badge.mystery && (
+          <div style={{marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+              <span style={{fontSize:12,fontWeight:600,color:T.text}}>Прогрес</span>
+              <span style={{fontSize:12,fontWeight:700,color:tr.color,fontFamily:'Nunito,sans-serif'}}>{badge.progress} / {badge.goal}</span>
+            </div>
+            <div style={{height:8,background:T.surf2,borderRadius:99,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,${tr.color},${tr.color}cc)`,borderRadius:99,transition:'width 0.8s cubic-bezier(.2,.7,.3,1)'}}/>
+            </div>
+            <div style={{fontSize:10,color:T.text3,marginTop:4,textAlign:'right'}}>{pct}% завършено</div>
+          </div>
+        )}
+
+        {/* Earned by */}
+        {badge.earnedBy.length>0 && (
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Спечелено от</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {badge.earnedBy.map(mi=>(
+                <div key={mi} style={{display:'flex',alignItems:'center',gap:6,background:T.surf2,borderRadius:99,padding:'4px 10px 4px 6px'}}>
+                  <div style={{width:22,height:22,borderRadius:'50%',background:MEMBERS[mi].color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif'}}>{MEMBERS[mi].init}</div>
+                  <span style={{fontSize:11,fontWeight:600,color:T.text}}>{MEMBERS[mi].name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {badge.earned && (
+          <div style={{marginTop:14,background:`linear-gradient(135deg,${tr.color}18,${tr.color}08)`,borderRadius:12,padding:'10px 14px',border:`1px solid ${tr.color}30`,textAlign:'center'}}>
+            <span style={{fontSize:12,fontWeight:700,color:tr.color}}>🎉 Вече спечелено!</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — All badges grid (family view)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [cat,       setCat]    = React.useState('all');
+  const [tierFilter,setTier]   = React.useState(null);
+  const [selected,  setSelect] = React.useState(null);
+  const [showEarned,setEarned] = React.useState(false);
+
+  const filtered = BADGES.filter(b=>{
+    if(cat!=='all' && b.category!==cat) return false;
+    if(tierFilter && b.tier!==tierFilter) return false;
+    if(showEarned && !b.earned) return false;
+    return true;
+  });
+
+  const earnedCount = BADGES.filter(b=>b.earned).length;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+      <BadgeSheet badge={selected} onClose={()=>setSelect(null)}/>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 0',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Постижения</div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Значки</div>
+          </div>
+          {/* Progress summary */}
+          <div style={{
+            background:T.challengeBg,borderRadius:12,padding:'6px 12px',
+            border:`1px solid ${T.challenge}30`,textAlign:'center',
+          }}>
+            <div style={{fontSize:18,fontWeight:900,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>{earnedCount}/{BADGES.length}</div>
+            <div style={{fontSize:9,color:T.text3,fontWeight:600}}>спечелени</div>
+          </div>
+        </div>
+
+        {/* Tier filter */}
+        <div style={{display:'flex',gap:5,overflowX:'auto',paddingBottom:10}}>
+          <div onClick={()=>setTier(null)} style={{
+            padding:'4px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',flexShrink:0,
+            background:!tierFilter?T.text:T.surf2,color:!tierFilter?'#fff':T.text2,
+            border:`1px solid ${!tierFilter?T.text:T.border}`,transition:'all 0.12s',
+          }}>Всички</div>
+          {Object.entries(TIER).map(([k,v])=>(
+            <div key={k} onClick={()=>setTier(tierFilter===k?null:k)} style={{
+              padding:'4px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',flexShrink:0,
+              background:tierFilter===k?v.color:T.surf2,color:tierFilter===k?'#fff':T.text2,
+              border:`1px solid ${tierFilter===k?v.color:T.border}`,transition:'all 0.12s',
+            }}>{v.label}</div>
+          ))}
+          <div onClick={()=>setEarned(!showEarned)} style={{
+            padding:'4px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',flexShrink:0,
+            background:showEarned?T.household:T.surf2,color:showEarned?'#fff':T.text2,
+            border:`1px solid ${showEarned?T.household:T.border}`,transition:'all 0.12s',
+          }}>✓ Спечелени</div>
+        </div>
+      </div>
+
+      {/* Category tabs */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,display:'flex',overflowX:'auto',flexShrink:0}}>
+        {CATEGORIES.map(c=>(
+          <div key={c.id} onClick={()=>setCat(c.id)} style={{
+            padding:'8px 12px',fontSize:11,fontWeight:cat===c.id?700:500,
+            color:cat===c.id?T.mustDo:T.text3,cursor:'pointer',flexShrink:0,
+            borderBottom:`2px solid ${cat===c.id?T.mustDo:'transparent'}`,
+            transition:'all 0.15s',
+          }}>{c.label}</div>
+        ))}
+      </div>
+
+      {/* Badge grid */}
+      <div style={{flex:1,overflowY:'auto',padding:'12px 14px'}}>
+        {/* Family progress bar */}
+        <div style={{
+          background:'#fff',borderRadius:12,border:`1px solid ${T.border}`,
+          padding:'12px 14px',marginBottom:12,
+        }}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+            <span style={{fontSize:12,fontWeight:700,color:T.text}}>Семеен прогрес</span>
+            <span style={{fontSize:12,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>{earnedCount}/{BADGES.length}</span>
+          </div>
+          <div style={{height:8,background:T.surf2,borderRadius:99,overflow:'hidden'}}>
+            <div style={{
+              height:'100%',
+              width:`${Math.round(earnedCount/BADGES.length*100)}%`,
+              background:`linear-gradient(90deg,${T.challenge},${T.mustDo})`,
+              borderRadius:99,transition:'width 0.8s ease-out',
+            }}/>
+          </div>
+          <div style={{display:'flex',gap:6,marginTop:8}}>
+            {Object.entries(TIER).map(([k,v])=>{
+              const n = BADGES.filter(b=>b.earned&&b.tier===k).length;
+              const total = BADGES.filter(b=>b.tier===k).length;
+              return (
+                <div key={k} style={{flex:1,textAlign:'center',background:v.bg,borderRadius:8,padding:'4px 2px',border:`1px solid ${v.color}20`}}>
+                  <div style={{fontSize:11,fontWeight:800,color:v.color,fontFamily:'Nunito,sans-serif'}}>{n}/{total}</div>
+                  <div style={{fontSize:9,color:v.color,fontWeight:600}}>{v.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Badges */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+          {filtered.map(b=>{
+            const tr = TIER[b.tier];
+            const pct = Math.min(100,Math.round((b.progress/b.goal)*100));
+            return (
+              <div key={b.id} onClick={()=>setSelect(b)} style={{
+                background:b.earned?T.surface:T.surf2,
+                borderRadius:14,border:`1.5px solid ${b.earned?tr.color+'50':T.border}`,
+                padding:'12px 8px 10px',
+                display:'flex',flexDirection:'column',alignItems:'center',gap:5,
+                cursor:'pointer',opacity:b.earned?1:0.65,
+                boxShadow:b.earned?`0 2px 10px ${tr.color}20`:'none',
+                transition:'all 0.15s',
+                position:'relative',
+              }}>
+                {/* Tier dot */}
+                <div style={{
+                  position:'absolute',top:8,right:8,
+                  width:8,height:8,borderRadius:'50%',background:tr.color,
+                }}/>
+
+                {/* Icon */}
+                <div style={{
+                  width:52,height:52,borderRadius:14,
+                  background:b.earned?`linear-gradient(135deg,${tr.color}25,${tr.color}08)`:T.border+'40',
+                  border:`2px solid ${b.earned?tr.color+'60':T.border}`,
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,
+                  animation:b.earned?'floatBadge 3s infinite':'none',
+                }}>
+                  {b.mystery&&!b.earned?'🔒':b.icon}
+                </div>
+
+                <div style={{fontSize:11,fontWeight:700,color:T.text,textAlign:'center',lineHeight:1.2}}>
+                  {b.mystery&&!b.earned?'???':b.name}
+                </div>
+
+                {/* Progress bar or earned */}
+                {b.earned
+                  ? <div style={{fontSize:9,fontWeight:700,color:tr.color,background:tr.bg,borderRadius:99,padding:'1px 7px'}}>✓ {tr.label}</div>
+                  : (
+                    <div style={{width:'100%'}}>
+                      <div style={{height:4,background:T.border,borderRadius:99,overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${pct}%`,background:tr.color,borderRadius:99}}/>
+                      </div>
+                      <div style={{fontSize:9,color:T.text3,textAlign:'center',marginTop:2}}>{pct}%</div>
+                    </div>
+                  )
+                }
+
+                {/* Earned-by avatars */}
+                {b.earnedBy.length>0 && (
+                  <div style={{display:'flex',justifyContent:'center'}}>
+                    {b.earnedBy.slice(0,3).map((mi,i)=>(
+                      <div key={i} style={{
+                        width:14,height:14,borderRadius:'50%',background:MEMBERS[mi].color,
+                        border:'1.5px solid #fff',marginLeft:i>0?-4:0,
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        fontSize:7,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif',
+                      }}>{MEMBERS[mi].init}</div>
+                    ))}
+                    {b.earnedBy.length>3&&<div style={{fontSize:9,color:T.text3,marginLeft:3}}>+{b.earnedBy.length-3}</div>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{height:20}}/>
+      </div>
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Personal badge page (my progress)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantB = () => {
+  const [selected, setSelect] = React.useState(null);
+
+  const ME = 2; // Елена
+  const earned  = BADGES.filter(b=>b.earnedBy.includes(ME));
+  const inProg  = BADGES.filter(b=>!b.earnedBy.includes(ME)&&b.progress>0&&!b.mystery);
+  const locked  = BADGES.filter(b=>!b.earnedBy.includes(ME)&&(b.progress===0||b.mystery));
+
+  const BadgePill = ({b, size=52}) => {
+    const tr = TIER[b.tier];
+    const earned = b.earnedBy.includes(ME);
+    return (
+      <div onClick={()=>setSelect(b)} style={{
+        display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',
+        opacity:earned?1:0.5,
+      }}>
+        <div style={{
+          width:size,height:size,borderRadius:size*0.27,
+          background:earned?`linear-gradient(135deg,${tr.color}30,${tr.color}10)`:T.surf2,
+          border:`2px solid ${earned?tr.color:T.border}`,
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.45,
+          boxShadow:earned?`0 3px 12px ${tr.color}30`:'none',
+          animation:earned?'floatBadge 3s infinite':'none',
+          position:'relative',
+        }}>
+          {b.mystery&&!earned?'🔒':b.icon}
+          {earned&&<div style={{position:'absolute',bottom:-4,right:-4,width:16,height:16,borderRadius:'50%',background:tr.color,border:'2px solid #fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,color:'#fff',fontWeight:700}}>✓</div>}
+        </div>
+        <div style={{fontSize:10,fontWeight:earned?700:500,color:earned?T.text:T.text3,textAlign:'center',maxWidth:56,lineHeight:1.2}}>{b.mystery&&!earned?'???':b.name}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+      <BadgeSheet badge={selected} onClose={()=>setSelect(null)}/>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 12px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Елена · Постижения</div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Моите значки</div>
+          </div>
+          <div style={{
+            width:44,height:44,borderRadius:'50%',background:T.avatars[2],
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:16,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',
+          }}>Е</div>
+        </div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',padding:'12px 14px'}}>
+
+        {/* Stats row */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+          {Object.entries(TIER).map(([k,v])=>{
+            const n = earned.filter(b=>b.tier===k).length;
+            const tot = BADGES.filter(b=>b.tier===k).length;
+            return (
+              <div key={k} style={{
+                background:n>0?v.bg:T.surf2,borderRadius:10,padding:'8px 4px',
+                border:`1.5px solid ${n>0?v.color+'40':T.border}`,textAlign:'center',
+              }}>
+                <div style={{fontSize:16,fontWeight:900,color:v.color,fontFamily:'Nunito,sans-serif'}}>{n}</div>
+                <div style={{fontSize:8,color:v.color,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}}>{v.label}</div>
+                <div style={{fontSize:9,color:T.text3}}>/{tot}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Earned */}
+        <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span>Спечелени ({earned.length})</span>
+          <span style={{fontSize:11,fontWeight:600,color:T.challenge}}>🏆 Рекорд: 21 дни</span>
+        </div>
+        {earned.length>0 ? (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+            {earned.map(b=><BadgePill key={b.id} b={b} size={52}/>)}
+          </div>
+        ) : (
+          <div style={{background:T.surf2,borderRadius:12,padding:'16px',textAlign:'center',marginBottom:20,fontSize:12,color:T.text3}}>
+            Още нямаш спечелени значки. Продължавай!
+          </div>
+        )}
+
+        {/* In progress */}
+        {inProg.length>0 && (
+          <>
+            <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}}>
+              В прогрес ({inProg.length})
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+              {inProg.map(b=>{
+                const tr = TIER[b.tier];
+                const pct = Math.min(100,Math.round((b.progress/b.goal)*100));
+                return (
+                  <div key={b.id} onClick={()=>setSelect(b)} style={{
+                    background:'#fff',borderRadius:12,border:`1px solid ${T.border}`,
+                    padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',
+                  }}>
+                    <div style={{width:44,height:44,borderRadius:12,background:tr.bg,border:`2px solid ${tr.color}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{b.icon}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+                        <span style={{fontSize:13,fontWeight:700,color:T.text}}>{b.name}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:tr.color,fontFamily:'Nunito,sans-serif'}}>{b.progress}/{b.goal}</span>
+                      </div>
+                      <div style={{height:6,background:T.surf2,borderRadius:99,overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${pct}%`,background:tr.color,borderRadius:99}}/>
+                      </div>
+                      <div style={{fontSize:10,color:T.text3,marginTop:2}}>{b.desc} · {pct}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Locked */}
+        <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}}>
+          Заключени ({locked.length})
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+          {locked.map(b=><BadgePill key={b.id} b={b} size={48}/>)}
+        </div>
+
+        <div style={{height:20}}/>
+      </div>
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="badges" title="Badges — Значки" subtitle="Mobile · Семеен каталог · Личен прогрес · Detail sheet">
+      <DCArtboard id="family" label="A · Семеен badge explorer" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="personal" label="B · Личен badge прогрес (Елена)" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

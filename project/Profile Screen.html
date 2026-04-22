@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /profile/[id]</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;background:#1a1612;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 24px;gap:48px;flex-wrap:wrap;
+}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(0.7);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes streakBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@keyframes progressFill{from{width:0}to{width:var(--w)}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const MEMBER = {
+  name:'Елена', init:'Е', color:T.avatars[2],
+  role:'Дете', age:10,
+  pointsBalance:340, pointsTotal:1240,
+  streak:14, longestStreak:21,
+  tasksCompleted:47, tasksThisWeek:6,
+  level:5, levelName:'Суперзвезда',
+  nextLevel:400,
+};
+
+const BADGES = [
+  {icon:'🏆',name:'Чемпион',tier:'gold',earned:true,desc:'50 задачи'},
+  {icon:'🔥',name:'Стрийк 14',tier:'silver',earned:true,desc:'14 дни поред'},
+  {icon:'⚡',name:'Светкавица',tier:'bronze',earned:true,desc:'3 задачи за 1 ден'},
+  {icon:'🌟',name:'Перфект',tier:'gold',earned:true,desc:'7 дни без пропуск'},
+  {icon:'👑',name:'Легенда',tier:'legendary',earned:false,desc:'100 задачи'},
+  {icon:'🎯',name:'Фокус',tier:'silver',earned:false,desc:'30-дневен стрийк'},
+  {icon:'🌈',name:'Всичко',tier:'bronze',earned:false,desc:'Всички типове'},
+  {icon:'💎',name:'Диамант',tier:'legendary',earned:false,desc:'500 точки'},
+];
+
+const LEDGER = [
+  {icon:'✓',label:'Домашно по математика',source:'task_approval',delta:+30,date:'Днес 17:55',color:T.household,note:'×1.5 streak'},
+  {icon:'⭐',label:'Дневна база',source:'daily_base',delta:+10,date:'Днес 00:01',color:T.challenge},
+  {icon:'🔥',label:'Стрийк бонус',source:'streak_bonus',delta:+10,date:'Вчера 22:05',color:T.challenge},
+  {icon:'✓',label:'Сутрешен спорт',source:'task_approval',delta:+50,date:'Вчера 09:30',color:T.household,note:'×2.0 streak'},
+  {icon:'🎁',label:'Видеоигри 1ч',source:'redemption',delta:-80,date:'Нед 16:10',color:T.mustDo},
+  {icon:'⭐',label:'Дневна база',source:'daily_base',delta:+10,date:'Нед 00:01',color:T.challenge},
+  {icon:'🎁',label:'Бонус от Мама',source:'bonus',delta:+20,date:'Съб 19:00',color:T.event,note:'🎉 Особена похвала'},
+];
+
+const TIER_COLORS = {bronze:'#cd7f32',silver:'#9ba5b4',gold:'#e8a838',legendary:'#8b5cf6'};
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const Divider = () => <div style={{height:1,background:T.border}}/>;
+
+const SectionTitle = ({children,action}) => (
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+    <span style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.1em',textTransform:'uppercase'}}>{children}</span>
+    {action && <span style={{fontSize:12,fontWeight:600,color:T.ongoing,cursor:'pointer'}}>{action}</span>}
+  </div>
+);
+
+const BottomNav = ({active=3}) => {
+  const tabs=[{icon:'📅',label:'Календар'},{icon:'✅',label:'Задачи'},{icon:'🎁',label:'Желания'},{icon:'👤',label:'Профил'}];
+  return (
+    <div style={{display:'flex',justifyContent:'space-around',padding:'8px 0 2px',borderTop:`1px solid ${T.border}`,background:'#fff',flexShrink:0}}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 12px',borderRadius:12,background:i===active?T.mustDo+'12':'transparent',minWidth:56}}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── Badge card ─────────────────────────────────────────────────────────────
+
+const BadgeCard = ({b,size=56}) => {
+  const tc = TIER_COLORS[b.tier];
+  return (
+    <div style={{
+      display:'flex',flexDirection:'column',alignItems:'center',gap:4,
+      opacity:b.earned?1:0.35,
+      animation:b.earned?'pop 0.4s cubic-bezier(.2,.7,.3,1)':'none',
+    }}>
+      <div style={{
+        width:size,height:size,borderRadius:size*0.28,
+        background:b.earned?`linear-gradient(135deg,${tc}30,${tc}10)`:T.surf2,
+        border:`2px solid ${b.earned?tc:T.border}`,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:size*0.42,
+        boxShadow:b.earned?`0 2px 10px ${tc}30`:'none',
+        position:'relative',
+      }}>
+        {b.icon}
+        {b.earned && (
+          <div style={{
+            position:'absolute',bottom:-4,right:-4,
+            width:16,height:16,borderRadius:'50%',
+            background:tc,border:'2px solid #fff',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:8,color:'#fff',fontWeight:700,
+          }}>✓</div>
+        )}
+      </div>
+      <div style={{fontSize:10,fontWeight:b.earned?700:500,color:T.text,textAlign:'center',lineHeight:1.2}}>{b.name}</div>
+      <div style={{fontSize:9,color:b.earned?tc:T.text3,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}}>{b.tier}</div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Полноекранен профил с hero + tabs
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [tab, setTab] = React.useState('badges');
+  const pct = Math.round((MEMBER.pointsBalance / MEMBER.nextLevel)*100);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Nav */}
+      <div style={{background:'transparent',padding:'10px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0,position:'absolute',top:0,left:0,right:0,zIndex:10}}>
+        <div style={{width:32,height:32,borderRadius:8,background:'rgba(255,255,255,0.25)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:'#fff'}}>‹</div>
+        <div style={{width:32,height:32,borderRadius:8,background:'rgba(255,255,255,0.25)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,cursor:'pointer',color:'#fff'}}>⋯</div>
+      </div>
+
+      {/* Hero */}
+      <div style={{
+        background:`linear-gradient(160deg, ${MEMBER.color} 0%, ${MEMBER.color}cc 60%, ${MEMBER.color}88 100%)`,
+        padding:'48px 20px 24px',flexShrink:0,position:'relative',overflow:'hidden',
+      }}>
+        {/* Decorative circles */}
+        <div style={{position:'absolute',top:-40,right:-30,width:140,height:140,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
+        <div style={{position:'absolute',bottom:-20,left:-20,width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.06)'}}/>
+
+        <div style={{display:'flex',alignItems:'flex-end',gap:14,marginBottom:16,position:'relative'}}>
+          {/* Avatar */}
+          <div style={{position:'relative'}}>
+            <div style={{
+              width:72,height:72,borderRadius:'50%',
+              background:'rgba(255,255,255,0.25)',
+              border:'3px solid rgba(255,255,255,0.6)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:28,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',
+            }}>{MEMBER.init}</div>
+            {/* Level badge */}
+            <div style={{
+              position:'absolute',bottom:-2,right:-2,
+              background:'#fff',borderRadius:99,padding:'2px 6px',
+              fontSize:10,fontWeight:800,color:MEMBER.color,fontFamily:'Nunito,sans-serif',
+              border:`1px solid ${MEMBER.color}30`,
+            }}>Lv.{MEMBER.level}</div>
+          </div>
+
+          <div style={{flex:1}}>
+            <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,0.7)',letterSpacing:'0.08em',textTransform:'uppercase'}}>{MEMBER.role} · {MEMBER.age} г.</div>
+            <div style={{fontSize:22,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',lineHeight:1.1}}>{MEMBER.name}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.75)',marginTop:2}}>{MEMBER.levelName}</div>
+          </div>
+
+          {/* Points balance */}
+          <div style={{
+            background:'rgba(255,255,255,0.2)',backdropFilter:'blur(8px)',
+            borderRadius:12,padding:'8px 12px',textAlign:'center',
+            border:'1px solid rgba(255,255,255,0.3)',
+          }}>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.75)',fontWeight:600}}>Баланс</div>
+            <div style={{fontSize:20,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',lineHeight:1}}>
+              {MEMBER.pointsBalance}
+            </div>
+            <div style={{fontSize:9,color:'rgba(255,255,255,0.6)'}}>точки</div>
+          </div>
+        </div>
+
+        {/* Level progress bar */}
+        <div style={{position:'relative'}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+            <span style={{fontSize:10,color:'rgba(255,255,255,0.7)',fontWeight:600}}>Ниво {MEMBER.level}</span>
+            <span style={{fontSize:10,color:'rgba(255,255,255,0.7)'}}>{MEMBER.pointsBalance} / {MEMBER.nextLevel} → Ниво {MEMBER.level+1}</span>
+          </div>
+          <div style={{height:6,background:'rgba(255,255,255,0.2)',borderRadius:99,overflow:'hidden'}}>
+            <div style={{
+              height:'100%',width:`${pct}%`,
+              background:'rgba(255,255,255,0.9)',borderRadius:99,
+              transition:'width 0.8s cubic-bezier(.2,.7,.3,1)',
+            }}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{
+        background:'#fff',borderBottom:`1px solid ${T.border}`,
+        display:'flex',flexShrink:0,
+      }}>
+        {[
+          {label:'Общо спечелени',val:MEMBER.pointsTotal,icon:'⭐',color:T.challenge},
+          {label:'Стрийк',val:`${MEMBER.streak} дни`,icon:'🔥',color:'#c77700'},
+          {label:'Задачи',val:MEMBER.tasksCompleted,icon:'✓',color:T.household},
+        ].map((s,i)=>(
+          <div key={i} style={{
+            flex:1,padding:'12px 8px',textAlign:'center',
+            borderRight:i<2?`1px solid ${T.border}`:'none',
+          }}>
+            <div style={{fontSize:16,marginBottom:2}}>{s.icon}</div>
+            <div style={{fontSize:15,fontWeight:800,color:s.color,fontFamily:'Nunito,sans-serif'}}>{s.val}</div>
+            <div style={{fontSize:9,color:T.text3,fontWeight:500}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{background:'#fff',display:'flex',borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+        {[['badges','🏅 Значки'],['ledger','📊 Точки'],['activity','📋 Задачи']].map(([id,label])=>(
+          <div key={id} onClick={()=>setTab(id)} style={{
+            flex:1,padding:'9px 4px',textAlign:'center',cursor:'pointer',
+            fontSize:11,fontWeight:tab===id?700:500,
+            color:tab===id?MEMBER.color:T.text3,
+            borderBottom:`2px solid ${tab===id?MEMBER.color:'transparent'}`,
+            transition:'all 0.15s',
+          }}>{label}</div>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{flex:1,overflowY:'auto',padding:'16px 16px'}}>
+
+        {/* BADGES tab */}
+        {tab==='badges' && (
+          <div style={{animation:'fadeUp 0.2s ease-out'}}>
+            <SectionTitle action="Виж всички">Спечелени ({BADGES.filter(b=>b.earned).length})</SectionTitle>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+              {BADGES.filter(b=>b.earned).map((b,i)=><BadgeCard key={i} b={b}/>)}
+            </div>
+            <SectionTitle>Предстоящи</SectionTitle>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
+              {BADGES.filter(b=>!b.earned).map((b,i)=>(
+                <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                  <BadgeCard b={b}/>
+                  <div style={{fontSize:9,color:T.text3,textAlign:'center'}}>{b.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* LEDGER tab */}
+        {tab==='ledger' && (
+          <div style={{animation:'fadeUp 0.2s ease-out'}}>
+            <SectionTitle>История на точките</SectionTitle>
+            <div style={{background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,overflow:'hidden'}}>
+              {LEDGER.map((row,i)=>(
+                <div key={i} style={{
+                  display:'flex',alignItems:'center',gap:10,padding:'10px 14px',
+                  borderBottom:i<LEDGER.length-1?`1px solid ${T.border}`:'none',
+                }}>
+                  <div style={{
+                    width:34,height:34,borderRadius:10,
+                    background:row.color+'18',flexShrink:0,
+                    display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,
+                  }}>{row.icon}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row.label}</div>
+                    <div style={{fontSize:10,color:T.text3,marginTop:1,display:'flex',gap:6,alignItems:'center'}}>
+                      <span>{row.date}</span>
+                      {row.note && <span style={{color:row.color,fontWeight:600}}>{row.note}</span>}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize:15,fontWeight:800,fontFamily:'Nunito,sans-serif',flexShrink:0,
+                    color:row.delta>0?'#2d9e5f':T.mustDo,
+                  }}>{row.delta>0?'+':''}{row.delta}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVITY tab */}
+        {tab==='activity' && (
+          <div style={{animation:'fadeUp 0.2s ease-out'}}>
+            <SectionTitle>Тази седмица</SectionTitle>
+            {/* Mini streak calendar */}
+            <div style={{background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,padding:'14px',marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
+                <span style={{fontSize:13,fontWeight:700,color:T.text}}>🔥 Стрийк — {MEMBER.streak} дни</span>
+                <span style={{fontSize:11,color:T.text3}}>Рекорд: {MEMBER.longestStreak}</span>
+              </div>
+              <div style={{display:'flex',gap:4}}>
+                {['П','В','С','Ч','П','С','Н'].map((d,i)=>(
+                  <div key={i} style={{flex:1,textAlign:'center'}}>
+                    <div style={{fontSize:9,color:T.text3,marginBottom:4}}>{d}</div>
+                    <div style={{
+                      height:28,borderRadius:6,
+                      background:i<=4?T.challenge:T.surf2,
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      fontSize:12,
+                    }}>{i<=4?'✓':''}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Task type breakdown */}
+            <SectionTitle>По тип задача</SectionTitle>
+            <div style={{background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,padding:'14px',display:'flex',flexDirection:'column',gap:10}}>
+              {[
+                {type:'must_do',label:'Must‑do',color:T.mustDo,count:8,pct:40},
+                {type:'household',label:'Домашно',color:T.household,count:6,pct:30},
+                {type:'challenge',label:'Предизвикателство',color:T.challenge,count:5,pct:25},
+                {type:'ongoing',label:'Ежедневно',color:T.ongoing,count:1,pct:5},
+              ].map(r=>(
+                <div key={r.type}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{fontSize:12,fontWeight:600,color:T.text}}>{r.label}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:r.color,fontFamily:'Nunito,sans-serif'}}>{r.count}</span>
+                  </div>
+                  <div style={{height:6,background:T.surf2,borderRadius:99,overflow:'hidden'}}>
+                    <div style={{
+                      height:'100%',width:`${r.pct}%`,background:r.color,borderRadius:99,
+                      transition:'width 0.6s cubic-bezier(.2,.7,.3,1)',
+                    }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{height:20}}/>
+      </div>
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Компактен профил (виж от друг член)
+// Showing parent viewing child profile — more compact, with bonus/add action
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantB = () => {
+  const [showBonus, setShowBonus] = React.useState(false);
+  const [bonusAmt, setBonusAmt] = React.useState(20);
+  const [bonusNote, setBonusNote] = React.useState('');
+  const [bonusSent, setBonusSent] = React.useState(false);
+
+  const sendBonus = () => {
+    setBonusSent(true);
+    setTimeout(()=>{ setShowBonus(false); setBonusSent(false); },1200);
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+
+      {/* Nav bar */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{width:32,height:32,borderRadius:8,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:T.text2}}>‹</div>
+        <div style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>Профил на Елена</div>
+        <div onClick={()=>setShowBonus(true)} style={{
+          background:T.challenge,borderRadius:8,padding:'6px 10px',cursor:'pointer',
+          display:'flex',alignItems:'center',gap:4,
+        }}>
+          <span style={{fontSize:12,color:'#fff',fontWeight:700}}>⭐ Бонус</span>
+        </div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto'}}>
+
+        {/* Profile card */}
+        <div style={{margin:'14px 14px 0',background:'#fff',borderRadius:16,border:`1px solid ${T.border}`,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,0.05)'}}>
+          <div style={{
+            background:`linear-gradient(135deg,${MEMBER.color}20,${MEMBER.color}08)`,
+            padding:'20px 16px 16px',
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
+              <div style={{position:'relative'}}>
+                <div style={{
+                  width:60,height:60,borderRadius:'50%',background:MEMBER.color,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:22,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',
+                  boxShadow:`0 4px 14px ${MEMBER.color}50`,
+                }}>{MEMBER.init}</div>
+                <div style={{
+                  position:'absolute',bottom:-3,right:-3,
+                  background:'#fff',borderRadius:99,padding:'1px 5px',
+                  fontSize:9,fontWeight:800,color:MEMBER.color,
+                  border:`1px solid ${MEMBER.color}30`,
+                }}>Lv.{MEMBER.level}</div>
+              </div>
+              <div>
+                <div style={{fontSize:18,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif'}}>{MEMBER.name}</div>
+                <div style={{fontSize:11,color:T.text3}}>{MEMBER.role} · {MEMBER.age} г. · {MEMBER.levelName}</div>
+              </div>
+            </div>
+
+            {/* Big points display */}
+            <div style={{
+              display:'flex',gap:10,
+            }}>
+              <div style={{
+                flex:1,background:'#fff',borderRadius:12,padding:'12px',
+                border:`1px solid ${T.border}`,textAlign:'center',
+              }}>
+                <div style={{fontSize:10,color:T.text3,fontWeight:600,marginBottom:2}}>БАЛАНС</div>
+                <div style={{fontSize:24,fontWeight:900,color:T.challenge,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  <span style={{fontSize:18}}>⭐</span>{MEMBER.pointsBalance}
+                </div>
+                <div style={{fontSize:9,color:T.text3}}>харчими точки</div>
+              </div>
+              <div style={{
+                flex:1,background:'#fff',borderRadius:12,padding:'12px',
+                border:`1px solid ${T.border}`,textAlign:'center',
+              }}>
+                <div style={{fontSize:10,color:T.text3,fontWeight:600,marginBottom:2}}>ОБЩО</div>
+                <div style={{fontSize:24,fontWeight:900,color:T.ongoing,fontFamily:'Nunito,sans-serif'}}>{MEMBER.pointsTotal}</div>
+                <div style={{fontSize:9,color:T.text3}}>спечелени</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Streak banner */}
+          <div style={{
+            background:'linear-gradient(90deg,#fff8e6,#fff3d0)',
+            borderTop:`1px solid #f5a62320`,
+            padding:'10px 16px',display:'flex',alignItems:'center',gap:10,
+          }}>
+            <span style={{fontSize:24,animation:'streakBounce 2s infinite'}}>🔥</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#92400e',fontFamily:'Nunito,sans-serif'}}>
+                {MEMBER.streak} дни стрийк!
+              </div>
+              <div style={{fontSize:10,color:'#a16207'}}>Рекорд: {MEMBER.longestStreak} дни · Мултипликатор ×2.0</div>
+            </div>
+            <div style={{
+              background:T.challenge,borderRadius:99,padding:'3px 10px',
+              fontSize:12,fontWeight:800,color:'#fff',fontFamily:'Nunito,sans-serif',
+            }}>×2.0</div>
+          </div>
+        </div>
+
+        {/* Featured badges */}
+        <div style={{margin:'12px 14px 0',background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,padding:'14px'}}>
+          <SectionTitle action="Виж всички">🏅 Значки ({BADGES.filter(b=>b.earned).length}/{BADGES.length})</SectionTitle>
+          <div style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:4}}>
+            {BADGES.map((b,i)=><BadgeCard key={i} b={b} size={48}/>)}
+          </div>
+        </div>
+
+        {/* Quick ledger */}
+        <div style={{margin:'12px 14px 0',background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,padding:'14px'}}>
+          <SectionTitle action="Виж всички">📊 Последни транзакции</SectionTitle>
+          {LEDGER.slice(0,4).map((row,i)=>(
+            <div key={i} style={{
+              display:'flex',alignItems:'center',gap:8,padding:'7px 0',
+              borderBottom:i<3?`1px solid ${T.border}80`:'none',
+            }}>
+              <div style={{width:28,height:28,borderRadius:8,background:row.color+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,flexShrink:0}}>{row.icon}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:600,color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row.label}</div>
+                <div style={{fontSize:9,color:T.text3}}>{row.date}</div>
+              </div>
+              <div style={{fontSize:13,fontWeight:800,fontFamily:'Nunito,sans-serif',color:row.delta>0?'#2d9e5f':T.mustDo,flexShrink:0}}>
+                {row.delta>0?'+':''}{row.delta}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{height:80}}/>
+      </div>
+
+      {/* Bonus bottom sheet */}
+      {showBonus && (
+        <div style={{
+          position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',zIndex:50,
+          display:'flex',alignItems:'flex-end',
+        }} onClick={()=>setShowBonus(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            width:'100%',background:'#fff',borderRadius:'20px 20px 0 0',
+            padding:'20px 20px 32px',
+            animation:'fadeUp 0.2s ease-out',
+          }}>
+            <div style={{width:36,height:4,borderRadius:99,background:T.border,margin:'0 auto 20px'}}/>
+            {bonusSent
+              ? (
+                <div style={{textAlign:'center',padding:'20px 0',animation:'pop 0.3s ease-out'}}>
+                  <div style={{fontSize:40,marginBottom:8}}>🎉</div>
+                  <div style={{fontSize:16,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Бонусът е изпратен!</div>
+                  <div style={{fontSize:12,color:T.text3,marginTop:4}}>+{bonusAmt} точки → Елена</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{fontSize:16,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Добави бонус</div>
+                  <div style={{fontSize:12,color:T.text3,marginBottom:16}}>Специална награда за Елена</div>
+
+                  {/* Amount selector */}
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:8}}>Точки</div>
+                    <div style={{display:'flex',gap:8}}>
+                      {[10,20,50,100].map(a=>(
+                        <div key={a} onClick={()=>setBonusAmt(a)} style={{
+                          flex:1,padding:'10px',borderRadius:10,textAlign:'center',
+                          background:bonusAmt===a?T.challenge:T.surf2,
+                          border:`1.5px solid ${bonusAmt===a?T.challenge:T.border}`,
+                          cursor:'pointer',
+                          fontSize:15,fontWeight:800,fontFamily:'Nunito,sans-serif',
+                          color:bonusAmt===a?'#fff':T.text,
+                          transition:'all 0.15s',
+                        }}>+{a}</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Note */}
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:6}}>Причина (опционално)</div>
+                    <input
+                      value={bonusNote}
+                      onChange={e=>setBonusNote(e.target.value)}
+                      placeholder="напр. За отличен успех!"
+                      style={{
+                        width:'100%',borderRadius:10,border:`1.5px solid ${T.border}`,
+                        padding:'10px 12px',fontSize:13,color:T.text,background:'#fff',
+                        fontFamily:'DM Sans,sans-serif',outline:'none',
+                      }}
+                    />
+                  </div>
+
+                  <div onClick={sendBonus} style={{
+                    background:T.challenge,borderRadius:12,padding:'13px',
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                    cursor:'pointer',boxShadow:`0 4px 14px ${T.challenge}40`,
+                  }}>
+                    <span style={{fontSize:16}}>⭐</span>
+                    <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>Изпрати +{bonusAmt} точки</span>
+                  </div>
+                </>
+              )
+            }
+          </div>
+        </div>
+      )}
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="profile" title="/profile/[id] — Профил" subtitle="Mobile · Точки · Streak · Badges · Ledger">
+      <DCArtboard id="full" label="A · Собствен профил (tabs)" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="parent" label="B · Родителски изглед + Бонус sheet" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /wishes</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#1a1612;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:40px 24px;gap:48px;flex-wrap:wrap;}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(0.7);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes reveal{0%{transform:scale(0.5) rotate(-10deg);opacity:0}60%{transform:scale(1.1) rotate(3deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes confetti{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(90px) rotate(720deg);opacity:0}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const MUST_DOS_TODAY = [
+  {id:1, title:'Домашно по математика', done:true},
+  {id:2, title:'Почисти стаята', done:false},
+];
+const ALL_DONE = MUST_DOS_TODAY.every(t=>t.done);
+
+const WISHES = [
+  {id:1, emoji:'🎮', title:'Видеоигри 2ч', pts:80,  status:'available', priced:true,  requestedBy:2, difficulty:'medium'},
+  {id:2, emoji:'🍕', title:'Пица вечер',   pts:60,  status:'pending',   priced:true,  requestedBy:2, difficulty:'easy'},
+  {id:3, emoji:'🎬', title:'Кино с мама',  pts:120, status:'available', priced:true,  requestedBy:2, difficulty:'hard'},
+  {id:4, emoji:'🧸', title:'Нова играчка', pts:0,   status:'pending',   priced:false, requestedBy:3, difficulty:null},
+  {id:5, emoji:'🎁', title:'Мистериозна', pts:100, status:'available', priced:true,  requestedBy:2, mystery:true, difficulty:'medium'},
+  {id:6, emoji:'🏖️', title:'Плаж в събота',pts:150, status:'redeemed',  priced:true,  requestedBy:2, difficulty:'hard'},
+];
+
+const MEMBER = {name:'Елена', init:'Е', color:T.avatars[2], balance:340};
+const MEMBERS = [
+  {name:'Мама',  init:'М', color:T.avatars[0]},
+  {name:'Петко', init:'П', color:T.avatars[1]},
+  {name:'Елена', init:'Е', color:T.avatars[2]},
+  {name:'Иван',  init:'И', color:T.avatars[3]},
+];
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const BottomNav = ({active=2}) => {
+  const tabs=[{icon:'📅',label:'Календар'},{icon:'✅',label:'Задачи'},{icon:'🎁',label:'Желания'},{icon:'👤',label:'Профил'}];
+  return (
+    <div style={{display:'flex',justifyContent:'space-around',padding:'8px 0 2px',borderTop:`1px solid ${T.border}`,background:'#fff',flexShrink:0}}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 12px',borderRadius:12,background:i===active?T.mustDo+'12':'transparent',minWidth:56}}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const Confetti = () => {
+  const colors=[T.challenge,T.mustDo,T.household,T.ongoing,T.event,'#e85d75'];
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,height:160,overflow:'hidden',pointerEvents:'none',zIndex:30}}>
+      {Array.from({length:24},(_,i)=>(
+        <div key={i} style={{
+          position:'absolute',top:-10,left:`${4+(i*4)%92}%`,
+          width:5+(i%3)*3,height:5+(i%3)*3,
+          borderRadius:i%3===0?'50%':2,background:colors[i%colors.length],
+          animation:`confetti ${0.8+i*0.04}s ${i*0.04}s ease-out forwards`,
+        }}/>
+      ))}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Child/Teen view
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [wishes, setWishes]         = React.useState(WISHES);
+  const [mustDos, setMustDos]       = React.useState(MUST_DOS_TODAY);
+  const [redeemingId, setRedeeming] = React.useState(null);
+  const [revealedId, setRevealed]   = React.useState(null);
+  const [showConfetti, setConfetti] = React.useState(false);
+  const [showAdd, setShowAdd]       = React.useState(false);
+  const [newWish, setNewWish]       = React.useState('');
+  const [shakingId, setShaking]     = React.useState(null);
+
+  const allDone = mustDos.every(t=>t.done);
+  const balance = MEMBER.balance;
+
+  const toggleMustDo = (id) => setMustDos(ms=>ms.map(m=>m.id===id?{...m,done:!m.done}:m));
+
+  const redeem = (wish) => {
+    if(!allDone){setShaking(wish.id);setTimeout(()=>setShaking(null),500);return;}
+    if(balance<wish.pts){setShaking(wish.id);setTimeout(()=>setShaking(null),500);return;}
+    setRedeeming(wish.id);
+    setTimeout(()=>{
+      if(wish.mystery) setRevealed(wish.id);
+      else {
+        setConfetti(true);
+        setTimeout(()=>setConfetti(false),1400);
+        setWishes(ws=>ws.map(w=>w.id===wish.id?{...w,status:'pending'}:w));
+      }
+      setRedeeming(null);
+    },600);
+  };
+
+  const submitWish = () => {
+    if(!newWish.trim()) return;
+    setWishes(ws=>[...ws,{id:Date.now(),emoji:'⭐',title:newWish,pts:0,status:'pending',priced:false,requestedBy:2,difficulty:null}]);
+    setNewWish('');
+    setShowAdd(false);
+  };
+
+  const available = wishes.filter(w=>w.status==='available'&&w.priced);
+  const pending   = wishes.filter(w=>w.status==='pending');
+  const redeemed  = wishes.filter(w=>w.status==='redeemed');
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+      {showConfetti && <Confetti/>}
+
+      {/* Mystery reveal overlay */}
+      {revealedId && (
+        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',zIndex:40,display:'flex',alignItems:'center',justifyContent:'center'}}
+          onClick={()=>{setRevealed(null);setConfetti(true);setTimeout(()=>setConfetti(false),1400);setWishes(ws=>ws.map(w=>w.id===revealedId?{...w,status:'pending'}:w));}}>
+          <div style={{
+            background:'linear-gradient(135deg,#667eea,#764ba2)',
+            borderRadius:24,padding:'32px 28px',textAlign:'center',width:280,
+            animation:'reveal 0.5s cubic-bezier(.2,.7,.3,1)',
+            boxShadow:'0 20px 60px rgba(0,0,0,0.4)',
+            position:'relative',overflow:'hidden',
+          }}>
+            <div style={{position:'absolute',inset:0,background:'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.12) 50%,transparent 60%)',backgroundSize:'200% 100%',animation:'shimmer 2s infinite'}}/>
+            <div style={{fontSize:56,marginBottom:12,position:'relative',zIndex:1}}>🎮</div>
+            <div style={{fontSize:18,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',marginBottom:6,position:'relative',zIndex:1}}>Видеоигри 2ч!</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,0.75)',marginBottom:16,position:'relative',zIndex:1}}>Твоята мистериозна награда е разкрита!</div>
+            <div style={{background:'rgba(255,255,255,0.2)',borderRadius:10,padding:'8px',fontSize:12,color:'#fff',fontWeight:600,position:'relative',zIndex:1}}>
+              Докосни за да затвориш
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 12px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Wish List</div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Моите желания 🌟</div>
+          </div>
+          {/* Balance */}
+          <div style={{
+            background:T.challengeBg,borderRadius:12,padding:'8px 12px',
+            border:`1px solid ${T.challenge}30`,textAlign:'center',
+          }}>
+            <div style={{fontSize:10,color:T.text3,fontWeight:600}}>Баланс</div>
+            <div style={{fontSize:18,fontWeight:900,color:T.challenge,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',gap:3}}>
+              <span style={{fontSize:14}}>⭐</span>{balance}
+            </div>
+          </div>
+        </div>
+
+        {/* Must-do gate */}
+        {!allDone && (
+          <div style={{
+            background:T.mustDoBg,border:`1.5px solid ${T.mustDo}40`,
+            borderRadius:12,padding:'10px 12px',
+            animation:'fadeUp 0.2s ease-out',
+          }}>
+            <div style={{fontSize:12,fontWeight:700,color:T.mustDo,marginBottom:6,display:'flex',alignItems:'center',gap:5}}>
+              <span>🔒</span> Заверши must-do задачите за да заявиш награда
+            </div>
+            {mustDos.map(t=>(
+              <div key={t.id} onClick={()=>toggleMustDo(t.id)} style={{
+                display:'flex',alignItems:'center',gap:8,marginBottom:4,cursor:'pointer',
+              }}>
+                <div style={{
+                  width:18,height:18,borderRadius:5,flexShrink:0,
+                  border:`2px solid ${t.done?T.household:T.mustDo}`,
+                  background:t.done?T.household:'transparent',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                }}>{t.done&&<span style={{color:'#fff',fontSize:11}}>✓</span>}</div>
+                <span style={{fontSize:11,color:T.text,textDecoration:t.done?'line-through':'none',opacity:t.done?0.5:1}}>{t.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {allDone && (
+          <div style={{
+            background:T.householdBg,border:`1px solid ${T.household}30`,
+            borderRadius:10,padding:'8px 12px',
+            display:'flex',alignItems:'center',gap:6,
+            animation:'fadeUp 0.2s ease-out',
+          }}>
+            <span style={{fontSize:14}}>✅</span>
+            <span style={{fontSize:12,fontWeight:600,color:T.household}}>Всички must-do задачи завършени! Можеш да заявиш награда.</span>
+          </div>
+        )}
+      </div>
+
+      {/* Scroll content */}
+      <div style={{flex:1,overflowY:'auto',padding:'12px 14px'}}>
+
+        {/* Available rewards */}
+        <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}}>
+          Налични ({available.length})
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:18}}>
+          {available.map(w=>{
+            const canAfford = balance>=w.pts;
+            const locked = !allDone;
+            const isShaking = shakingId===w.id;
+            const isRedeeming = redeemingId===w.id;
+            return (
+              <div key={w.id} style={{
+                background:T.surface,borderRadius:14,
+                border:`1px solid ${T.border}`,overflow:'hidden',
+                boxShadow:'0 2px 8px rgba(0,0,0,0.05)',
+                animation:isShaking?'shake 0.4s ease-out':'none',
+                opacity: (!canAfford||locked) ? 0.75 : 1,
+              }}>
+                {/* Image area */}
+                <div style={{
+                  height:72,
+                  background: w.mystery
+                    ? 'linear-gradient(135deg,#667eea,#764ba2)'
+                    : `linear-gradient(135deg,${T.challengeBg},${T.eventBg})`,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:32,
+                  position:'relative',
+                }}>
+                  {w.mystery ? <span style={{animation:'float 2s infinite'}}>🎁</span> : w.emoji}
+                  {locked && <div style={{position:'absolute',inset:0,background:'rgba(255,255,255,0.5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🔒</div>}
+                </div>
+                <div style={{padding:'8px 10px'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:4,lineHeight:1.2}}>
+                    {w.mystery?'??? Мистерия':w.title}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:4}}>
+                    <div style={{fontSize:13,fontWeight:800,color:T.challenge,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',gap:2}}>
+                      <span style={{fontSize:11}}>⭐</span>{w.pts}
+                    </div>
+                    <div
+                      onClick={()=>redeem(w)}
+                      style={{
+                        background: isRedeeming ? T.challenge : (locked||!canAfford)?T.border:T.mustDo,
+                        borderRadius:8,padding:'4px 10px',cursor:'pointer',
+                        transition:'all 0.15s',
+                      }}
+                    >
+                      <span style={{fontSize:11,fontWeight:700,color:'#fff'}}>
+                        {isRedeeming?'⏳':locked?'🔒':!canAfford?'Малко':'Заяви'}
+                      </span>
+                    </div>
+                  </div>
+                  {!canAfford && !locked && (
+                    <div style={{fontSize:9,color:T.mustDo,marginTop:3,fontWeight:600}}>
+                      Нужни още ⭐{w.pts-balance}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pending */}
+        {pending.length>0 && (
+          <>
+            <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}}>
+              Чакат ({pending.length})
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+              {pending.map(w=>(
+                <div key={w.id} style={{
+                  background:'#fff',borderRadius:12,border:`1px solid ${T.border}`,
+                  padding:'10px 12px',display:'flex',alignItems:'center',gap:10,
+                }}>
+                  <span style={{fontSize:24,flexShrink:0}}>{w.emoji}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:T.text}}>{w.title}</div>
+                    <div style={{fontSize:10,color:T.text3,marginTop:1}}>
+                      {w.priced ? `⭐ ${w.pts} · Чака одобрение` : 'Чака оценка от родителя'}
+                    </div>
+                  </div>
+                  <div style={{
+                    background:w.priced?T.challengeBg:T.surf2,borderRadius:99,padding:'3px 8px',
+                    fontSize:10,fontWeight:700,color:w.priced?T.challenge:T.text3,
+                  }}>{w.priced?'⏳ Чака':'💭 Без цена'}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Redeemed */}
+        {redeemed.length>0 && (
+          <>
+            <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}}>
+              Получени
+            </div>
+            {redeemed.map(w=>(
+              <div key={w.id} style={{
+                background:T.householdBg,borderRadius:12,border:`1px solid ${T.household}30`,
+                padding:'10px 12px',display:'flex',alignItems:'center',gap:10,marginBottom:6,
+                opacity:0.7,
+              }}>
+                <span style={{fontSize:22}}>{w.emoji}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:T.text,textDecoration:'line-through'}}>{w.title}</div>
+                </div>
+                <div style={{fontSize:12,color:T.household,fontWeight:700}}>✓ Получено</div>
+              </div>
+            ))}
+          </>
+        )}
+
+        <div style={{height:70}}/>
+      </div>
+
+      {/* Add wish FAB */}
+      <div onClick={()=>setShowAdd(true)} style={{
+        position:'absolute',bottom:72,right:16,
+        width:48,height:48,borderRadius:'50%',background:T.mustDo,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        color:'#fff',fontSize:24,boxShadow:`0 4px 16px ${T.mustDo}60`,
+        cursor:'pointer',zIndex:10,
+      }}>＋</div>
+
+      {/* Add wish sheet */}
+      {showAdd && (
+        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.4)',zIndex:50,display:'flex',alignItems:'flex-end'}}
+          onClick={()=>setShowAdd(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            width:'100%',background:'#fff',borderRadius:'20px 20px 0 0',
+            padding:'20px 20px 32px',animation:'fadeUp 0.2s ease-out',
+          }}>
+            <div style={{width:36,height:4,borderRadius:99,background:T.border,margin:'0 auto 16px'}}/>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Ново желание</div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:14}}>Родителят ще определи точките</div>
+            <input value={newWish} onChange={e=>setNewWish(e.target.value)}
+              placeholder="напр. Нови маратонки..."
+              style={{width:'100%',borderRadius:10,border:`1.5px solid ${T.border}`,padding:'10px 12px',fontSize:13,color:T.text,background:'#fff',fontFamily:'DM Sans,sans-serif',outline:'none',marginBottom:12}}/>
+            <div onClick={submitWish} style={{
+              background:newWish.trim()?T.mustDo:T.border,borderRadius:12,padding:'12px',
+              textAlign:'center',cursor:newWish.trim()?'pointer':'not-allowed',
+              boxShadow:newWish.trim()?`0 4px 12px ${T.mustDo}40`:'none',
+            }}>
+              <span style={{fontSize:13,fontWeight:700,color:'#fff'}}>🌟 Изпрати желание</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BottomNav active={2}/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Parent view (price & approve)
+// ════════════════════════════════════════════════════════════════════════════
+
+const ALL_REQUESTS = [
+  {id:1, emoji:'🧸', title:'Нова играчка', requestedBy:3, pts:0,  priced:false, status:'pending', note:''},
+  {id:2, emoji:'🎬', title:'Кино с мама',  requestedBy:2, pts:0,  priced:false, status:'pending', note:''},
+  {id:3, emoji:'🎮', title:'Видеоигри 2ч', requestedBy:1, pts:80, priced:true,  status:'pending', note:''},
+  {id:4, emoji:'🍕', title:'Пица вечер',   requestedBy:2, pts:60, priced:true,  status:'pending', note:''},
+];
+
+const CATALOG = [
+  {id:10, emoji:'🎮', title:'Видеоигри 1ч',  pts:80,  mystery:false},
+  {id:11, emoji:'🍕', title:'Пица вечер',     pts:60,  mystery:false},
+  {id:12, emoji:'🎬', title:'Кино',           pts:120, mystery:false},
+  {id:13, emoji:'🎁', title:'Мистерия',       pts:100, mystery:true},
+  {id:14, emoji:'🏖️', title:'Плаж',           pts:150, mystery:false},
+  {id:15, emoji:'🧸', title:'Играчка до 20лв',pts:90,  mystery:false},
+];
+
+const VariantB = () => {
+  const [tab, setTab]         = React.useState('requests');
+  const [requests, setReqs]   = React.useState(ALL_REQUESTS);
+  const [pricingId, setPricing] = React.useState(null);
+  const [ptsInput, setPtsInput] = React.useState('');
+  const [showConfetti, setConfetti] = React.useState(false);
+  const [filterMember, setFilter] = React.useState(null);
+
+  const unpriced = requests.filter(r=>!r.priced);
+  const priced   = requests.filter(r=>r.priced);
+
+  const setPrice = (id) => {
+    const pts = parseInt(ptsInput);
+    if(!pts||pts<=0) return;
+    setReqs(rs=>rs.map(r=>r.id===id?{...r,pts,priced:true}:r));
+    setPricing(null);
+    setPtsInput('');
+  };
+
+  const approve = (id) => {
+    setConfetti(true);
+    setTimeout(()=>setConfetti(false),1400);
+    setReqs(rs=>rs.filter(r=>r.id!==id));
+  };
+
+  const reject = (id) => setReqs(rs=>rs.filter(r=>r.id!==id));
+
+  const filtered = (list) => filterMember!==null ? list.filter(r=>r.requestedBy===filterMember) : list;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',position:'relative'}}>
+      {showConfetti && <Confetti/>}
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 0',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <div>
+            <div style={{fontSize:10,fontWeight:600,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Родителски панел</div>
+            <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',gap:8}}>
+              Wish List
+              {unpriced.length>0&&<span style={{background:T.mustDo,color:'#fff',borderRadius:99,padding:'1px 8px',fontSize:13,fontWeight:800,fontFamily:'Nunito,sans-serif'}}>{unpriced.length}</span>}
+            </div>
+          </div>
+          {/* Member filter */}
+          <div style={{display:'flex',gap:5}}>
+            {MEMBERS.slice(1).map((m,i)=>(
+              <div key={i} onClick={()=>setFilter(filterMember===i+1?null:i+1)} style={{
+                width:30,height:30,borderRadius:'50%',
+                background:filterMember===i+1?m.color:T.surf2,
+                border:`2px solid ${filterMember===i+1?m.color:T.border}`,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                color:filterMember===i+1?'#fff':T.text3,
+                fontSize:11,fontWeight:700,fontFamily:'Nunito,sans-serif',
+                cursor:'pointer',transition:'all 0.15s',
+              }}>{m.init}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{display:'flex',borderBottom:`1px solid ${T.border}`}}>
+          {[['requests','📥 Заявки'],['catalog','🗂️ Каталог']].map(([id,label])=>(
+            <div key={id} onClick={()=>setTab(id)} style={{
+              flex:1,padding:'8px',textAlign:'center',cursor:'pointer',
+              fontSize:12,fontWeight:tab===id?700:500,
+              color:tab===id?T.mustDo:T.text3,
+              borderBottom:`2px solid ${tab===id?T.mustDo:'transparent'}`,
+              transition:'all 0.15s',
+            }}>{label}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',padding:'12px 14px'}}>
+
+        {/* REQUESTS tab */}
+        {tab==='requests' && (
+          <div>
+            {/* Unpriced — needs attention */}
+            {filtered(unpriced).length>0 && (
+              <>
+                <div style={{fontSize:11,fontWeight:700,color:T.mustDo,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:5}}>
+                  <span>⚠️</span> Нужна оценка ({filtered(unpriced).length})
+                </div>
+                {filtered(unpriced).map(r=>(
+                  <div key={r.id} style={{
+                    background:'#fff',borderRadius:14,border:`1.5px solid ${T.mustDo}40`,
+                    padding:'12px 14px',marginBottom:8,
+                    boxShadow:'0 2px 6px rgba(0,0,0,0.05)',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:pricingId===r.id?12:0}}>
+                      <span style={{fontSize:24,flexShrink:0}}>{r.emoji}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:700,color:T.text}}>{r.title}</div>
+                        <div style={{fontSize:11,color:T.text3,display:'flex',alignItems:'center',gap:6,marginTop:1}}>
+                          <div style={{width:16,height:16,borderRadius:'50%',background:MEMBERS[r.requestedBy]?.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif'}}>{MEMBERS[r.requestedBy]?.init}</div>
+                          {MEMBERS[r.requestedBy]?.name} · Без цена
+                        </div>
+                      </div>
+                      <div onClick={()=>setPricing(pricingId===r.id?null:r.id)} style={{
+                        background:T.mustDo,borderRadius:8,padding:'5px 10px',cursor:'pointer',
+                      }}>
+                        <span style={{fontSize:11,fontWeight:700,color:'#fff'}}>⭐ Оцени</span>
+                      </div>
+                    </div>
+
+                    {pricingId===r.id && (
+                      <div style={{animation:'fadeUp 0.15s ease-out'}}>
+                        <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:6}}>Колко точки струва?</div>
+                        <div style={{display:'flex',gap:6,marginBottom:8,flexWrap:'wrap'}}>
+                          {[30,50,60,80,100,120,150].map(p=>(
+                            <div key={p} onClick={()=>setPtsInput(String(p))} style={{
+                              padding:'5px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                              background:ptsInput===String(p)?T.challenge:T.surf2,
+                              color:ptsInput===String(p)?'#fff':T.text2,
+                              border:`1px solid ${ptsInput===String(p)?T.challenge:T.border}`,
+                              transition:'all 0.12s',
+                            }}>⭐{p}</div>
+                          ))}
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <input value={ptsInput} onChange={e=>setPtsInput(e.target.value)} type="number" placeholder="или въведи..."
+                            style={{flex:1,borderRadius:8,border:`1.5px solid ${T.border}`,padding:'8px 10px',fontSize:13,color:T.text,background:'#fff',fontFamily:'DM Sans,sans-serif',outline:'none'}}/>
+                          <div onClick={()=>setPrice(r.id)} style={{
+                            background:ptsInput?T.household:T.border,borderRadius:8,padding:'8px 14px',cursor:ptsInput?'pointer':'not-allowed',
+                          }}>
+                            <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>Запази</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Priced — ready to approve */}
+            {filtered(priced).length>0 && (
+              <>
+                <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8,marginTop:filtered(unpriced).length>0?8:0}}>
+                  Готови за одобрение ({filtered(priced).length})
+                </div>
+                {filtered(priced).map(r=>(
+                  <div key={r.id} style={{
+                    background:'#fff',borderRadius:14,border:`1px solid ${T.border}`,
+                    padding:'12px 14px',marginBottom:8,
+                    boxShadow:'0 1px 4px rgba(0,0,0,0.04)',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                      <span style={{fontSize:24,flexShrink:0}}>{r.emoji}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:700,color:T.text}}>{r.title}</div>
+                        <div style={{fontSize:11,color:T.text3,display:'flex',alignItems:'center',gap:6,marginTop:1}}>
+                          <div style={{width:16,height:16,borderRadius:'50%',background:MEMBERS[r.requestedBy]?.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif'}}>{MEMBERS[r.requestedBy]?.init}</div>
+                          {MEMBERS[r.requestedBy]?.name}
+                          <div style={{background:T.challengeBg,borderRadius:99,padding:'1px 7px',fontSize:10,fontWeight:700,color:T.challenge,fontFamily:'Nunito,sans-serif',display:'flex',alignItems:'center',gap:2}}>⭐{r.pts}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <div onClick={()=>reject(r.id)} style={{flex:1,padding:'8px',borderRadius:8,background:T.mustDoBg,border:`1px solid ${T.mustDo}30`,display:'flex',alignItems:'center',justifyContent:'center',gap:4,cursor:'pointer'}}>
+                        <span style={{fontSize:12,fontWeight:700,color:T.mustDo}}>✕ Отхвърли</span>
+                      </div>
+                      <div onClick={()=>approve(r.id)} style={{flex:2,padding:'8px',borderRadius:8,background:T.household,display:'flex',alignItems:'center',justifyContent:'center',gap:4,cursor:'pointer',boxShadow:`0 2px 8px ${T.household}40`}}>
+                        <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>✓ Одобри</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {filtered(unpriced).length===0&&filtered(priced).length===0 && (
+              <div style={{textAlign:'center',padding:'40px 20px'}}>
+                <div style={{fontSize:40,marginBottom:8}}>🎉</div>
+                <div style={{fontSize:14,fontWeight:700,color:T.text}}>Нищо чакащо!</div>
+                <div style={{fontSize:12,color:T.text3,marginTop:4}}>Всички заявки са обработени.</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CATALOG tab */}
+        {tab==='catalog' && (
+          <div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:12}}>Награди в семейния каталог. Децата могат да ги заявят директно.</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {CATALOG.map(item=>(
+                <div key={item.id} style={{background:'#fff',borderRadius:12,border:`1px solid ${T.border}`,overflow:'hidden'}}>
+                  <div style={{
+                    height:60,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,
+                    background:item.mystery?'linear-gradient(135deg,#667eea,#764ba2)':T.challengeBg,
+                  }}>{item.mystery?<span style={{animation:'float 2s infinite'}}>🎁</span>:item.emoji}</div>
+                  <div style={{padding:'8px 10px'}}>
+                    <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:4}}>{item.mystery?'Мистерия':item.title}</div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <div style={{fontSize:12,fontWeight:800,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>⭐{item.pts}</div>
+                      <div style={{width:24,height:24,borderRadius:6,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,cursor:'pointer'}}>✎</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {/* Add to catalog */}
+              <div style={{background:T.surf2,borderRadius:12,border:`1.5px dashed ${T.border}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,minHeight:120,cursor:'pointer'}}>
+                <div style={{fontSize:24,color:T.text3}}>＋</div>
+                <div style={{fontSize:11,fontWeight:600,color:T.text3}}>Добави</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{height:20}}/>
+      </div>
+
+      <BottomNav active={2}/>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="wishes" title="/wishes — Wish List" subtitle="Mobile · Role-adapted · Must-do gate · Mystery reveal">
+      <DCArtboard id="child" label="A · Child/Teen view" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="parent" label="B · Parent view (price & approve)" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

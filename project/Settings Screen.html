@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#1a1612;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:40px 24px;gap:48px;flex-wrap:wrap;}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+  danger:'#e53e3e', dangerBg:'#fff5f5',
+};
+
+const MEMBER = {name:'Мама', init:'М', color:T.avatars[0], role:'Родител', email:'mama@family.bg'};
+const FAMILY  = {name:'Семейство Иванови', timezone:'Europe/Sofia', dailyBase:10, autoApproveHours:0};
+const MEMBERS = [
+  {name:'Мама',  init:'М', color:T.avatars[0], role:'Родител',    age:null},
+  {name:'Петко', init:'П', color:T.avatars[1], role:'Тийн',       age:15},
+  {name:'Елена', init:'Е', color:T.avatars[2], role:'Дете',       age:10},
+  {name:'Иван',  init:'И', color:T.avatars[3], role:'Малко дете', age:6},
+];
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const Toggle = ({value, onChange, color}) => (
+  <div onClick={()=>onChange(!value)} style={{
+    width:42,height:24,borderRadius:99,cursor:'pointer',
+    background:value?(color||T.household):T.border,
+    position:'relative',transition:'background 0.2s',flexShrink:0,
+  }}>
+    <div style={{
+      position:'absolute',top:3,
+      left:value?21:3,
+      width:18,height:18,borderRadius:'50%',background:'#fff',
+      transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+    }}/>
+  </div>
+);
+
+const Av = ({m,size=36}) => (
+  <div style={{
+    width:size,height:size,borderRadius:'50%',background:m.color,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:'#fff',fontSize:size*0.38,fontWeight:700,fontFamily:'Nunito,sans-serif',flexShrink:0,
+  }}>{m.init}</div>
+);
+
+const Row = ({icon,label,sublabel,right,onClick,danger,first,last}) => (
+  <div onClick={onClick} style={{
+    display:'flex',alignItems:'center',gap:12,
+    padding:'12px 16px',
+    background:T.surface,
+    borderBottom:last?'none':`1px solid ${T.border}`,
+    cursor:onClick?'pointer':'default',
+  }}>
+    {icon && (
+      <div style={{
+        width:32,height:32,borderRadius:9,flexShrink:0,
+        background:danger?T.dangerBg:T.surf2,
+        display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,
+      }}>{icon}</div>
+    )}
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:13,fontWeight:500,color:danger?T.danger:T.text,lineHeight:1.3}}>{label}</div>
+      {sublabel && <div style={{fontSize:11,color:T.text3,marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sublabel}</div>}
+    </div>
+    {right}
+    {onClick&&!right && <span style={{color:T.text3,fontSize:14}}>›</span>}
+  </div>
+);
+
+const GroupCard = ({children, style}) => (
+  <div style={{
+    background:T.surface,borderRadius:14,
+    border:`1px solid ${T.border}`,
+    overflow:'hidden',
+    boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+    ...style,
+  }}>{children}</div>
+);
+
+const GroupLabel = ({children}) => (
+  <div style={{
+    fontSize:11,fontWeight:700,color:T.text3,
+    letterSpacing:'0.1em',textTransform:'uppercase',
+    padding:'16px 16px 6px',
+  }}>{children}</div>
+);
+
+const BottomNav = ({active=3}) => {
+  const tabs=[{icon:'📅',label:'Календар'},{icon:'✅',label:'Задачи'},{icon:'🎁',label:'Желания'},{icon:'👤',label:'Профил'}];
+  return (
+    <div style={{display:'flex',justifyContent:'space-around',padding:'8px 0 2px',borderTop:`1px solid ${T.border}`,background:'#fff',flexShrink:0}}>
+      {tabs.map((t,i)=>(
+        <div key={t.label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 12px',borderRadius:12,background:i===active?T.mustDo+'12':'transparent',minWidth:56}}>
+          <span style={{fontSize:20}}>{t.icon}</span>
+          <span style={{fontSize:9,fontWeight:i===active?700:500,color:i===active?T.mustDo:T.text3}}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Parent settings (full access)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantA = () => {
+  const [darkMode,      setDark]         = React.useState(false);
+  const [pushNotifs,    setPush]         = React.useState(true);
+  const [emailDigest,   setEmail]        = React.useState(true);
+  const [trackingPublic,setTracking]     = React.useState(true);
+  const [autoApprove,   setAutoApprove]  = React.useState(false);
+  const [dailyBase,     setDailyBase]    = React.useState(10);
+  const [activeSection, setSection]      = React.useState(null); // null | 'family' | 'members' | 'points'
+  const [savedPulse,    setSaved]        = React.useState(false);
+
+  const save = () => { setSaved(true); setTimeout(()=>setSaved(false),1400); };
+
+  // Sub-screen: family details
+  if(activeSection==='family') return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div onClick={()=>setSection(null)} style={{width:32,height:32,borderRadius:8,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:T.text2}}>‹</div>
+        <div style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>Семейни настройки</div>
+        <div onClick={save} style={{background:savedPulse?T.household:T.mustDo,borderRadius:8,padding:'6px 14px',cursor:'pointer',transition:'background 0.3s'}}>
+          <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>{savedPulse?'✓ Запазено':'Запази'}</span>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'0 0 20px'}}>
+        <GroupLabel>Семейство</GroupLabel>
+        <GroupCard>
+          <Row icon="🏠" label="Име на семейството" sublabel={FAMILY.name} onClick={()=>{}} first/>
+          <Row icon="🌍" label="Часова зона" sublabel="Europe/Sofia (UTC+3)" onClick={()=>{}} last/>
+        </GroupCard>
+
+        <GroupLabel>Точки по подразбиране</GroupLabel>
+        <GroupCard>
+          <Row icon="⭐" label="Дневна база" sublabel="Точки, давани автоматично всеки ден" first
+            right={
+              <div style={{display:'flex',gap:4}}>
+                {[5,10,15,20].map(v=>(
+                  <div key={v} onClick={()=>setDailyBase(v)} style={{
+                    padding:'4px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                    background:dailyBase===v?T.challenge:T.surf2,
+                    color:dailyBase===v?'#fff':T.text2,
+                    border:`1px solid ${dailyBase===v?T.challenge:T.border}`,
+                    transition:'all 0.12s',
+                  }}>{v}</div>
+                ))}
+              </div>
+            }
+          />
+          <Row icon="⚡" label="Авто-одобрение" sublabel={autoApprove?"След 24ч без действие":"Изключено — ръчно одобрение"}
+            right={<Toggle value={autoApprove} onChange={setAutoApprove} color={T.household}/>} last/>
+        </GroupCard>
+
+        <GroupLabel>Streak правила</GroupLabel>
+        <GroupCard>
+          <Row icon="🔥" label="Стрийк мултипликатори" sublabel="7д ×1.5 · 14д ×2.0 · 30д ×3.0" onClick={()=>{}} first/>
+          <Row icon="🏆" label="Milestone бонуси" sublabel="Настрой допълнителни бонуси" onClick={()=>{}} last/>
+        </GroupCard>
+
+        <GroupLabel>Опасна зона</GroupLabel>
+        <GroupCard>
+          <Row icon="🗑️" label="Изтрий семейството" danger onClick={()=>{}} first last/>
+        </GroupCard>
+      </div>
+    </div>
+  );
+
+  // Sub-screen: members
+  if(activeSection==='members') return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div onClick={()=>setSection(null)} style={{width:32,height:32,borderRadius:8,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:T.text2}}>‹</div>
+        <div style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>Членове на семейството</div>
+        <div style={{background:T.mustDo,borderRadius:8,padding:'6px 12px',cursor:'pointer'}}>
+          <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>＋ Покани</span>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'0 0 20px'}}>
+        <GroupLabel>Членове ({MEMBERS.length})</GroupLabel>
+        <GroupCard>
+          {MEMBERS.map((m,i)=>(
+            <Row key={i} first={i===0} last={i===MEMBERS.length-1}
+              icon={<Av m={m} size={32}/>}
+              label={m.name}
+              sublabel={`${m.role}${m.age?` · ${m.age} г.`:''}`}
+              onClick={()=>{}}
+              right={
+                <div style={{
+                  background:T.surf2,borderRadius:99,padding:'3px 8px',
+                  fontSize:10,fontWeight:600,color:T.text3,
+                }}>{m.role}</div>
+              }
+            />
+          ))}
+        </GroupCard>
+
+        <GroupLabel>Чакащи покани</GroupLabel>
+        <GroupCard>
+          <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:10}}>
+            <div style={{width:32,height:32,borderRadius:'50%',background:T.surf2,border:`2px dashed ${T.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>?</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,color:T.text2}}>grandma@example.com</div>
+              <div style={{fontSize:11,color:T.text3}}>Разширен достъп · Изпратена преди 2 дни</div>
+            </div>
+            <div style={{fontSize:11,fontWeight:600,color:T.mustDo,cursor:'pointer'}}>Отмени</div>
+          </div>
+        </GroupCard>
+      </div>
+    </div>
+  );
+
+  // Main settings screen
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 12px',flexShrink:0}}>
+        <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Настройки</div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',padding:'0 0 20px'}}>
+
+        {/* Profile */}
+        <GroupLabel>Профил</GroupLabel>
+        <GroupCard>
+          <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${T.border}`}}>
+            <div style={{position:'relative'}}>
+              <Av m={MEMBER} size={48}/>
+              <div style={{
+                position:'absolute',bottom:-2,right:-2,width:18,height:18,borderRadius:'50%',
+                background:T.mustDo,border:'2px solid #fff',
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,cursor:'pointer',
+              }}>✎</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,color:T.text,fontFamily:'Nunito,sans-serif'}}>{MEMBER.name}</div>
+              <div style={{fontSize:11,color:T.text3}}>{MEMBER.email}</div>
+              <div style={{
+                display:'inline-flex',alignItems:'center',gap:3,marginTop:3,
+                background:T.mustDoBg,borderRadius:99,padding:'2px 8px',
+                fontSize:10,fontWeight:600,color:T.mustDo,
+              }}>{MEMBER.role}</div>
+            </div>
+          </div>
+          <Row icon="🎨" label="Аватар цвят" sublabel="Цветът ти в семейния календар" onClick={()=>{}}
+            right={<div style={{width:22,height:22,borderRadius:'50%',background:MEMBER.color,border:`2px solid ${T.border}`}}/>}/>
+          <Row icon="🔑" label="Промени парола" onClick={()=>{}} last/>
+        </GroupCard>
+
+        {/* Family — parent only */}
+        <GroupLabel>Семейство</GroupLabel>
+        <GroupCard>
+          <Row icon="🏠" label="Семейни настройки" sublabel="Точки, часова зона, авто-одобрение" onClick={()=>setSection('family')} first/>
+          <Row icon="👨‍👩‍👧‍👦" label="Членове" sublabel={`${MEMBERS.length} членове · 1 чакаща покана`} onClick={()=>setSection('members')} last/>
+        </GroupCard>
+
+        {/* Notifications */}
+        <GroupLabel>Известия</GroupLabel>
+        <GroupCard>
+          <Row icon="🔔" label="Push известия" sublabel="Одобрения, значки, дедлайни" first
+            right={<Toggle value={pushNotifs} onChange={setPush} color={T.household}/>}/>
+          <Row icon="📧" label="Седмичен digest" sublabel="Имейл всяка неделя 18:00"
+            right={<Toggle value={emailDigest} onChange={setEmail} color={T.household}/>} last/>
+        </GroupCard>
+
+        {/* Privacy */}
+        <GroupLabel>Поверителност</GroupLabel>
+        <GroupCard>
+          <Row icon="👁️" label="Публичен прогрес" sublabel="Другите членове виждат точките ти" first
+            right={<Toggle value={trackingPublic} onChange={setTracking} color={T.household}/>}/>
+          <Row icon="🌙" label="Тъмен режим" sublabel="Автоматично при системата"
+            right={<Toggle value={darkMode} onChange={setDark} color={T.event}/>} last/>
+        </GroupCard>
+
+        {/* Danger */}
+        <GroupLabel>Акаунт</GroupLabel>
+        <GroupCard>
+          <Row icon="🚪" label="Излез от акаунта" onClick={()=>{}} first/>
+          <Row icon="🗑️" label="Изтрий акаунта" danger onClick={()=>{}} last/>
+        </GroupCard>
+
+        {/* App info */}
+        <div style={{padding:'16px',textAlign:'center'}}>
+          <div style={{fontSize:11,color:T.text3,marginBottom:2}}>FamilyAffairs</div>
+          <div style={{fontSize:10,color:T.text3}}>Версия 1.0.0 · Made with ❤️</div>
+        </div>
+      </div>
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Teen/Child personal settings (limited)
+// ════════════════════════════════════════════════════════════════════════════
+
+const TEEN = {name:'Петко', init:'П', color:T.avatars[1], role:'Тийн', email:'petko@family.bg'};
+
+const VariantB = () => {
+  const [darkMode,       setDark]     = React.useState(false);
+  const [pushNotifs,     setPush]     = React.useState(true);
+  const [trackingPublic, setTracking] = React.useState(true);
+  const [showColorPicker,setColorPicker] = React.useState(false);
+  const [avatarColor,    setAvatarColor] = React.useState(T.avatars[1]);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px 12px',flexShrink:0}}>
+        <div style={{fontSize:18,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>Настройки</div>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',padding:'0 0 20px'}}>
+
+        {/* Profile card */}
+        <GroupLabel>Моят профил</GroupLabel>
+        <GroupCard>
+          <div style={{padding:'16px',display:'flex',alignItems:'center',gap:12,borderBottom:`1px solid ${T.border}`}}>
+            <div style={{position:'relative',cursor:'pointer'}} onClick={()=>setColorPicker(!showColorPicker)}>
+              <div style={{
+                width:56,height:56,borderRadius:'50%',background:avatarColor,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:20,fontWeight:900,color:'#fff',fontFamily:'Nunito,sans-serif',
+                boxShadow:`0 4px 14px ${avatarColor}50`,
+              }}>{TEEN.init}</div>
+              <div style={{
+                position:'absolute',bottom:-2,right:-2,width:20,height:20,borderRadius:'50%',
+                background:'#fff',border:`1.5px solid ${T.border}`,
+                display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,
+              }}>🎨</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:16,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif'}}>{TEEN.name}</div>
+              <div style={{fontSize:11,color:T.text3}}>{TEEN.role} · {TEEN.email}</div>
+            </div>
+          </div>
+
+          {/* Color picker inline */}
+          {showColorPicker && (
+            <div style={{padding:'12px 16px',borderBottom:`1px solid ${T.border}`,animation:'fadeUp 0.15s ease-out'}}>
+              <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:8}}>Избери цвят на аватара</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {T.avatars.map((c,i)=>(
+                  <div key={i} onClick={()=>{setAvatarColor(c);setColorPicker(false);}} style={{
+                    width:36,height:36,borderRadius:'50%',background:c,cursor:'pointer',
+                    border:`3px solid ${avatarColor===c?'#fff':'transparent'}`,
+                    boxShadow:avatarColor===c?`0 0 0 2px ${c},0 2px 8px ${c}50`:'none',
+                    transition:'all 0.15s',
+                  }}/>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Row icon="🔑" label="Промени парола" onClick={()=>{}} last/>
+        </GroupCard>
+
+        {/* Notifications */}
+        <GroupLabel>Известия</GroupLabel>
+        <GroupCard>
+          <Row icon="✅" label="Задачи одобрени/отхвърлени" first
+            right={<Toggle value={pushNotifs} onChange={setPush} color={T.household}/>}/>
+          <Row icon="🏅" label="Нови значки"
+            right={<Toggle value={true} onChange={()=>{}} color={T.household}/>}/>
+          <Row icon="⭐" label="Получени бонуси"
+            right={<Toggle value={true} onChange={()=>{}} color={T.household}/>}/>
+          <Row icon="📅" label="Дедлайни (24ч преди)"
+            right={<Toggle value={true} onChange={()=>{}} color={T.household}/>} last/>
+        </GroupCard>
+
+        {/* Privacy */}
+        <GroupLabel>Поверителност</GroupLabel>
+        <GroupCard>
+          <Row icon="👁️" label="Публичен прогрес" sublabel="Мама и другите виждат точките ти" first
+            right={<Toggle value={trackingPublic} onChange={setTracking} color={T.household}/>}/>
+          <Row icon="🌙" label="Тъмен режим"
+            right={<Toggle value={darkMode} onChange={setDark} color={T.event}/>} last/>
+        </GroupCard>
+
+        {/* What teens CAN'T change — grayed out */}
+        <GroupLabel>Само за родители</GroupLabel>
+        <GroupCard style={{opacity:0.45}}>
+          <Row icon="🏠" label="Семейни настройки" sublabel="Нямаш достъп" first/>
+          <Row icon="👨‍👩‍👧‍👦" label="Управление на членове" sublabel="Нямаш достъп"/>
+          <Row icon="⭐" label="Дневна база точки" sublabel="Нямаш достъп" last/>
+        </GroupCard>
+        <div style={{padding:'4px 16px 8px',fontSize:10,color:T.text3,display:'flex',alignItems:'center',gap:4}}>
+          <span>🔒</span> Тези настройки се управляват от родителя
+        </div>
+
+        {/* Account */}
+        <GroupLabel>Акаунт</GroupLabel>
+        <GroupCard>
+          <Row icon="🚪" label="Излез от акаунта" onClick={()=>{}} first last/>
+        </GroupCard>
+
+        <div style={{padding:'16px',textAlign:'center'}}>
+          <div style={{fontSize:11,color:T.text3}}>FamilyAffairs v1.0.0</div>
+        </div>
+      </div>
+
+      <BottomNav active={3}/>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="settings" title="/settings — Настройки" subtitle="Mobile · Parent (пълен) · Teen (ограничен)">
+      <DCArtboard id="parent" label="A · Parent view (пълни настройки)" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="teen" label="B · Teen view (лични настройки)" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

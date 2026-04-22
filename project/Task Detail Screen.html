@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /tasks/[id]</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#1a1612;
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:40px 24px;gap:48px;flex-wrap:wrap;
+}
+::-webkit-scrollbar{display:none}
+
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes pop {
+  0%{transform:scale(0.6);opacity:0}
+  70%{transform:scale(1.08)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes shimmer {
+  0%{background-position:-200% 0}
+  100%{background-position:200% 0}
+}
+@keyframes confetti {
+  0%{transform:translateY(0) rotate(0deg);opacity:1}
+  100%{transform:translateY(60px) rotate(360deg);opacity:0}
+}
+@keyframes streakPulse {
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.15)}
+}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6'],
+};
+
+const TASK = {
+  title: 'Домашно по математика',
+  type: 'must_do',
+  typeLabel: 'Must‑do',
+  typeColor: T.mustDo,
+  typeBg: T.mustDoBg,
+  description: 'Реши упражнения от страница 84–86, задачи 1–12. Покажи решенията на мама за проверка.',
+  dur: 45,
+  due: 'Днес до 20:00',
+  streak: 7,
+  pts: 20,
+  rewardType: 'mystery',
+  mysteryReward: '🎮 Видеоигри 1 час',
+  assignees: [{name:'Елена', init:'Е', color:T.avatars[2], share:100}],
+  claimedAt: '17:43',
+};
+
+const APPROVED_TASK = {
+  ...TASK,
+  status: 'approved',
+  rewardRevealed: true,
+};
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const Av = ({name, init, color, size=36}) => (
+  <div style={{
+    width:size,height:size,borderRadius:'50%',background:color,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:'#fff',fontSize:size*0.38,fontWeight:700,fontFamily:'Nunito,sans-serif',
+    flexShrink:0,boxShadow:`0 2px 8px ${color}50`,
+  }}>{init}</div>
+);
+
+const Pill = ({color,bg,children}) => (
+  <span style={{
+    display:'inline-flex',alignItems:'center',
+    background:bg,color,border:`1px solid ${color}30`,
+    borderRadius:99,padding:'3px 10px',fontSize:12,fontWeight:600,
+  }}>{children}</span>
+);
+
+const Divider = () => (
+  <div style={{height:1,background:T.border,margin:'0 0'}}/>
+);
+
+const Section = ({children, style}) => (
+  <div style={{padding:'16px 20px',...style}}>{children}</div>
+);
+
+const SectionTitle = ({children}) => (
+  <div style={{fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.1em',
+    textTransform:'uppercase',marginBottom:10}}>{children}</div>
+);
+
+// ── Confetti burst ─────────────────────────────────────────────────────────
+const Confetti = () => {
+  const colors = [T.challenge, T.mustDo, T.household, T.ongoing, T.event, '#e85d75'];
+  const pieces = Array.from({length:18},(_,i)=>i);
+  return (
+    <div style={{position:'absolute',top:0,left:0,right:0,height:120,overflow:'hidden',pointerEvents:'none',zIndex:20}}>
+      {pieces.map(i=>{
+        const left = 10 + (i*5.5)%80;
+        const delay = (i*0.07)%0.6;
+        const color = colors[i%colors.length];
+        const size = 6 + (i%3)*3;
+        return (
+          <div key={i} style={{
+            position:'absolute',top:-10,left:`${left}%`,
+            width:size,height:size,
+            borderRadius:i%3===0?'50%':2,
+            background:color,
+            animation:`confetti 1.2s ${delay}s ease-out forwards`,
+          }}/>
+        );
+      })}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// STATE MACHINE: pending → approving → approved / rejected
+// ════════════════════════════════════════════════════════════════════════════
+
+const TaskDetail = ({initialState='pending'}) => {
+  const [state, setState] = React.useState(initialState);
+  const [rejectNote, setRejectNote] = React.useState('');
+  const [showRejectInput, setShowRejectInput] = React.useState(false);
+  const [showReward, setShowReward] = React.useState(false);
+  const [showConfetti, setShowConfetti] = React.useState(false);
+
+  const handleApprove = () => {
+    setState('approved');
+    setShowConfetti(true);
+    setTimeout(()=>setShowConfetti(false), 1400);
+    setTimeout(()=>setShowReward(true), 600);
+  };
+
+  const handleReject = () => {
+    if(!showRejectInput){ setShowRejectInput(true); return; }
+    setState('rejected');
+    setShowRejectInput(false);
+  };
+
+  const statusConfig = {
+    pending:  {label:'Чака одобрение', color:T.challenge, bg:T.challengeBg, dot:T.challenge},
+    approved: {label:'Одобрена',       color:T.household, bg:T.householdBg, dot:T.household},
+    rejected: {label:'Отхвърлена',     color:T.mustDo,   bg:T.mustDoBg,    dot:T.mustDo},
+  };
+  const st = statusConfig[state];
+
+  return (
+    <div style={{
+      display:'flex',flexDirection:'column',height:'100%',
+      background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',
+      position:'relative',
+    }}>
+      {showConfetti && <Confetti/>}
+
+      {/* Nav bar */}
+      <div style={{
+        background:'#fff',borderBottom:`1px solid ${T.border}`,
+        padding:'10px 16px',display:'flex',alignItems:'center',gap:10,
+        flexShrink:0,
+      }}>
+        <div style={{
+          width:32,height:32,borderRadius:8,background:T.surf2,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:16,cursor:'pointer',color:T.text2,
+        }}>‹</div>
+        <div style={{flex:1,textAlign:'center'}}>
+          <div style={{fontSize:13,fontWeight:600,color:T.text}}>Детайл на задача</div>
+        </div>
+        {/* Edit button — only for parent + non-approved */}
+        {state!=='approved' && (
+          <div style={{
+            width:32,height:32,borderRadius:8,background:T.surf2,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:14,cursor:'pointer',color:T.text2,
+          }}>✏</div>
+        )}
+        {state==='approved' && <div style={{width:32}}/>}
+      </div>
+
+      {/* Scrollable body */}
+      <div style={{flex:1,overflowY:'auto'}}>
+
+        {/* Hero */}
+        <div style={{
+          background:`linear-gradient(135deg, ${TASK.typeColor}18 0%, ${TASK.typeColor}08 100%)`,
+          borderBottom:`1px solid ${TASK.typeColor}20`,
+          padding:'20px 20px 16px',
+          animation:'fadeUp 0.3s ease-out',
+        }}>
+          <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:12}}>
+            <div style={{
+              width:48,height:48,borderRadius:14,
+              background:TASK.typeColor,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:22,flexShrink:0,
+            }}>
+              {TASK.type==='must_do'?'📋':TASK.type==='challenge'?'⚡':TASK.type==='household'?'🏠':'📖'}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
+                <Pill color={TASK.typeColor} bg={TASK.typeBg}>{TASK.typeLabel}</Pill>
+                {TASK.streak>=3 && (
+                  <div style={{
+                    display:'inline-flex',alignItems:'center',gap:3,
+                    background:'#fff3e0',borderRadius:99,padding:'3px 8px',
+                    fontSize:11,fontWeight:700,color:'#c77700',
+                    animation:'streakPulse 2s infinite',
+                  }}>🔥 {TASK.streak} дни</div>
+                )}
+              </div>
+              <div style={{fontSize:17,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',lineHeight:1.3}}>
+                {TASK.title}
+              </div>
+            </div>
+          </div>
+
+          {/* Meta row */}
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <div style={{
+              display:'inline-flex',alignItems:'center',gap:4,
+              background:'#fff',borderRadius:8,padding:'5px 10px',
+              border:`1px solid ${T.border}`,fontSize:11,color:T.text2,fontWeight:500,
+            }}>🕐 {TASK.dur} мин</div>
+            <div style={{
+              display:'inline-flex',alignItems:'center',gap:4,
+              background:'#fff',borderRadius:8,padding:'5px 10px',
+              border:`1px solid ${T.border}`,fontSize:11,color:T.text2,fontWeight:500,
+            }}>📅 {TASK.due}</div>
+            <div style={{
+              display:'inline-flex',alignItems:'center',gap:4,
+              background:st.bg,borderRadius:8,padding:'5px 10px',
+              border:`1px solid ${st.color}30`,fontSize:11,color:st.color,fontWeight:600,
+            }}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:st.color}}/>
+              {st.label}
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <Section>
+          <SectionTitle>Описание</SectionTitle>
+          <div style={{fontSize:13,color:T.text2,lineHeight:1.6}}>{TASK.description}</div>
+        </Section>
+        <Divider/>
+
+        {/* Assignees */}
+        <Section>
+          <SectionTitle>Изпълнители</SectionTitle>
+          {TASK.assignees.map((a,i)=>(
+            <div key={i} style={{
+              display:'flex',alignItems:'center',gap:12,
+              padding:'10px 12px',background:T.surf2,borderRadius:12,
+            }}>
+              <Av {...a}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:T.text}}>{a.name}</div>
+                <div style={{fontSize:11,color:T.text3,marginTop:1}}>
+                  Заявено в {TASK.claimedAt} · {a.share}% от точките
+                </div>
+              </div>
+              <div style={{
+                background:T.challengeBg,borderRadius:99,padding:'4px 10px',
+                fontSize:13,fontWeight:800,color:T.challenge,fontFamily:'Nunito,sans-serif',
+                display:'flex',alignItems:'center',gap:3,
+              }}>⭐ {TASK.pts}</div>
+            </div>
+          ))}
+        </Section>
+        <Divider/>
+
+        {/* Streak */}
+        <Section>
+          <SectionTitle>Стрийк</SectionTitle>
+          <div style={{
+            display:'flex',alignItems:'center',gap:10,
+            padding:'12px 14px',
+            background:'linear-gradient(135deg,#fff8e6,#fff3d0)',
+            borderRadius:12,border:'1px solid #f5a62330',
+          }}>
+            <div style={{fontSize:28}}>🔥</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:800,color:'#92400e',fontFamily:'Nunito,sans-serif'}}>
+                {TASK.streak} поредни дни
+              </div>
+              <div style={{fontSize:11,color:'#a16207',marginTop:2}}>
+                Мултипликатор ×1.5 · Следващ milestone при 14 дни
+              </div>
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontSize:18,fontWeight:900,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>×1.5</div>
+              <div style={{fontSize:9,color:'#a16207',fontWeight:600}}>БОНУС</div>
+            </div>
+          </div>
+
+          {/* Mini streak bar */}
+          <div style={{display:'flex',gap:3,marginTop:10}}>
+            {Array.from({length:14},(_,i)=>(
+              <div key={i} style={{
+                flex:1,height:20,borderRadius:4,
+                background: i<TASK.streak ? T.challenge : T.surf2,
+                border:`1px solid ${i<TASK.streak ? T.challenge+'40' : T.border}`,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:9,
+              }}>
+                {i===TASK.streak-1 ? '🔥' : ''}
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:4,fontSize:10,color:T.text3}}>
+            <span>Ден 1</span><span>14 дни → ×2.0</span>
+          </div>
+        </Section>
+        <Divider/>
+
+        {/* Reward */}
+        <Section>
+          <SectionTitle>Награда</SectionTitle>
+          {state==='pending' && (
+            <div style={{
+              background:'linear-gradient(135deg,#667eea18,#764ba218)',
+              border:`1.5px dashed ${T.event}50`,
+              borderRadius:14,padding:'20px',
+              display:'flex',flexDirection:'column',alignItems:'center',gap:8,
+              textAlign:'center',
+            }}>
+              <div style={{fontSize:36}}>🎁</div>
+              <div style={{fontSize:14,fontWeight:700,color:T.text}}>Мистериозна награда</div>
+              <div style={{fontSize:11,color:T.text3,lineHeight:1.5}}>
+                Наградата ще се разкрие след одобрение.<br/>Само родителят знае какво е.
+              </div>
+              <div style={{
+                background:T.event+'18',borderRadius:99,padding:'4px 12px',
+                fontSize:11,fontWeight:600,color:T.event,
+              }}>🔒 Скрита до одобрение</div>
+            </div>
+          )}
+
+          {state==='approved' && (
+            <div style={{
+              background:'linear-gradient(135deg,#667eea,#764ba2)',
+              borderRadius:14,padding:'20px',
+              display:'flex',flexDirection:'column',alignItems:'center',gap:8,
+              textAlign:'center',
+              animation: showReward ? 'pop 0.4s cubic-bezier(.2,.7,.3,1)' : 'none',
+              position:'relative',overflow:'hidden',
+            }}>
+              {/* Shimmer overlay */}
+              <div style={{
+                position:'absolute',inset:0,
+                background:'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.15) 50%,transparent 60%)',
+                backgroundSize:'200% 100%',
+                animation:'shimmer 2s infinite',
+                borderRadius:14,
+              }}/>
+              <div style={{fontSize:40,position:'relative',zIndex:1}}>🎮</div>
+              <div style={{fontSize:15,fontWeight:800,color:'#fff',fontFamily:'Nunito,sans-serif',position:'relative',zIndex:1}}>
+                {TASK.mysteryReward}
+              </div>
+              <div style={{fontSize:11,color:'rgba(255,255,255,0.7)',position:'relative',zIndex:1}}>
+                Спечелена награда — добавена в профила
+              </div>
+            </div>
+          )}
+
+          {state==='rejected' && (
+            <div style={{
+              background:T.mustDoBg,border:`1px solid ${T.mustDo}30`,
+              borderRadius:14,padding:'16px',
+              display:'flex',alignItems:'center',gap:12,
+            }}>
+              <div style={{fontSize:24}}>❌</div>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:T.mustDo}}>Задачата е отхвърлена</div>
+                <div style={{fontSize:11,color:T.text3,marginTop:2}}>Наградата не е присъдена</div>
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Reject note input (shown when reject tapped first time) */}
+        {showRejectInput && state==='pending' && (
+          <Section style={{paddingTop:0}}>
+            <div style={{fontSize:11,fontWeight:600,color:T.text,marginBottom:6}}>Причина за отхвърляне (опционално)</div>
+            <textarea
+              value={rejectNote}
+              onChange={e=>setRejectNote(e.target.value)}
+              placeholder="напр. Не е направено достатъчно добре..."
+              style={{
+                width:'100%',borderRadius:10,border:`1.5px solid ${T.mustDo}60`,
+                padding:'10px 12px',fontSize:13,color:T.text,
+                background:'#fff',resize:'none',height:72,
+                fontFamily:'DM Sans,sans-serif',outline:'none',
+              }}
+            />
+          </Section>
+        )}
+
+        <div style={{height:100}}/>
+      </div>
+
+      {/* Action bar */}
+      {state==='pending' && (
+        <div style={{
+          background:'#fff',borderTop:`1px solid ${T.border}`,
+          padding:'12px 16px',flexShrink:0,
+          animation:'fadeUp 0.2s ease-out',
+        }}>
+          {/* Points preview */}
+          <div style={{
+            display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+            marginBottom:10,padding:'6px',
+            background:T.challengeBg,borderRadius:10,
+          }}>
+            <span style={{fontSize:12,color:T.text2}}>При одобрение:</span>
+            <span style={{fontSize:14,fontWeight:800,color:T.challenge,fontFamily:'Nunito,sans-serif'}}>
+              ⭐ {TASK.pts} × 1.5 = {Math.round(TASK.pts*1.5)} точки
+            </span>
+          </div>
+
+          <div style={{display:'flex',gap:10}}>
+            {/* Reject */}
+            <div
+              onClick={handleReject}
+              style={{
+                flex:1,padding:'13px',borderRadius:12,
+                background: showRejectInput ? T.mustDo : T.mustDoBg,
+                border:`1.5px solid ${T.mustDo}`,
+                display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                cursor:'pointer',transition:'all 0.15s',
+              }}
+            >
+              <span style={{fontSize:16}}>✕</span>
+              <span style={{
+                fontSize:14,fontWeight:700,
+                color: showRejectInput ? '#fff' : T.mustDo,
+              }}>
+                {showRejectInput ? 'Потвърди отхвърляне' : 'Отхвърли'}
+              </span>
+            </div>
+
+            {/* Approve */}
+            <div
+              onClick={handleApprove}
+              style={{
+                flex:2,padding:'13px',borderRadius:12,
+                background:T.household,
+                display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+                cursor:'pointer',
+                boxShadow:`0 4px 14px ${T.household}50`,
+              }}
+            >
+              <span style={{fontSize:16}}>✓</span>
+              <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>Одобри задача</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approved state bottom */}
+      {state==='approved' && (
+        <div style={{
+          background:'#fff',borderTop:`1px solid ${T.border}`,
+          padding:'14px 16px',flexShrink:0,
+          animation:'fadeUp 0.3s ease-out',
+        }}>
+          <div style={{
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+            padding:'12px',background:T.householdBg,borderRadius:12,
+            border:`1px solid ${T.household}30`,
+          }}>
+            <span style={{fontSize:20}}>🎉</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:T.household}}>Задачата е одобрена!</div>
+              <div style={{fontSize:11,color:T.text3}}>+{Math.round(TASK.pts*1.5)} точки добавени към Елена</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejected state bottom */}
+      {state==='rejected' && (
+        <div style={{
+          background:'#fff',borderTop:`1px solid ${T.border}`,
+          padding:'14px 16px',flexShrink:0,
+          animation:'fadeUp 0.3s ease-out',
+        }}>
+          <div style={{
+            padding:'12px',background:T.mustDoBg,borderRadius:12,
+            border:`1px solid ${T.mustDo}30`,
+            textAlign:'center',
+          }}>
+            <div style={{fontSize:13,fontWeight:700,color:T.mustDo,marginBottom:2}}>Отхвърлена</div>
+            <div style={{fontSize:11,color:T.text3}}>Елена може да опита отново</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="detail" title="/tasks/[id] — Детайл на задача" subtitle="Mobile · Parent view · Интерактивен approve flow">
+      <DCArtboard id="pending" label="Чака одобрение → тапни Одобри / Отхвърли" width={375} height={780}>
+        <TaskDetail initialState="pending"/>
+      </DCArtboard>
+      <DCArtboard id="approved" label="След одобрение (mystery reveal)" width={375} height={780}>
+        <TaskDetail initialState="approved"/>
+      </DCArtboard>
+      <DCArtboard id="rejected" label="Отхвърлена" width={375} height={780}>
+        <TaskDetail initialState="rejected"/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>

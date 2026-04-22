@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FamilyAffairs — /tasks/new</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',sans-serif;background:#1a1612;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 24px;gap:48px;flex-wrap:wrap;
+}
+::-webkit-scrollbar{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideBack{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pop{0%{transform:scale(0.8);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+const T = {
+  household:'#2cb5a0', mustDo:'#f06449', ongoing:'#4a90d9',
+  challenge:'#f5a623', baseline:'#9099a6', event:'#8b5cf6',
+  householdBg:'#e8f8f6', mustDoBg:'#fdf0ed', ongoingBg:'#eaf3fc',
+  challengeBg:'#fef6e8', baselineBg:'#f2f3f5', eventBg:'#f3effe',
+  bg:'#f5f2ee', surface:'#ffffff', surf2:'#f0ece6',
+  text:'#1e1a16', text2:'#6b6460', text3:'#9e9a96', border:'#e4dfd8',
+  avatars:['#e85d75','#f5a623','#2cb5a0','#4a90d9','#8b5cf6','#f06449'],
+};
+
+const TASK_TYPES = [
+  {id:'household', label:'Домашно',      icon:'🏠', color:T.household, bg:T.householdBg, desc:'Почистване, готвене, поддръжка'},
+  {id:'must_do',   label:'Must‑do',      icon:'📋', color:T.mustDo,    bg:T.mustDoBg,    desc:'Блокира reward до изпълнение'},
+  {id:'ongoing',   label:'Ежедневно',    icon:'🔄', color:T.ongoing,   bg:T.ongoingBg,   desc:'Повтаряща се с streak'},
+  {id:'challenge', label:'Предизвик.',   icon:'⚡', color:T.challenge, bg:T.challengeBg, desc:'Streak + milestone бонуси'},
+  {id:'baseline',  label:'Базово',       icon:'📌', color:T.baseline,  bg:T.baselineBg,  desc:'Само отчетност, без точки'},
+];
+
+const EVENT_COLORS = [T.event,'#e85d75',T.challenge,T.household,T.ongoing,'#f06449','#44b77a','#e8a838'];
+
+const MEMBERS = [
+  {name:'Мама',  init:'М', color:T.avatars[0]},
+  {name:'Петко', init:'П', color:T.avatars[1]},
+  {name:'Елена', init:'Е', color:T.avatars[2]},
+  {name:'Иван',  init:'И', color:T.avatars[3]},
+];
+
+const RECURRENCE_OPTIONS = [
+  {id:'none',     label:'Еднократна'},
+  {id:'daily',    label:'Всеки ден'},
+  {id:'weekdays', label:'Делнични'},
+  {id:'weekly',   label:'Седмично'},
+  {id:'monthly',  label:'Месечно'},
+];
+
+const REWARD_TYPES = [
+  {id:'none',    label:'Без награда',  icon:'—',  desc:'Само точки'},
+  {id:'fixed',   label:'Фиксирана',   icon:'🎯', desc:'Конкретна награда'},
+  {id:'choice',  label:'Избор',       icon:'🎲', desc:'2–3 опции'},
+  {id:'mystery', label:'Мистерия',    icon:'🎁', desc:'Скрита до одобрение'},
+];
+
+// ── Micro ─────────────────────────────────────────────────────────────────
+
+const Label = ({children, required}) => (
+  <div style={{fontSize:11,fontWeight:700,color:T.text,marginBottom:6,display:'flex',gap:4}}>
+    {children}
+    {required && <span style={{color:T.mustDo}}>*</span>}
+  </div>
+);
+
+const Input = ({placeholder, value, onChange, type='text'}) => (
+  <input
+    type={type} value={value} onChange={e=>onChange(e.target.value)}
+    placeholder={placeholder}
+    style={{
+      width:'100%',borderRadius:10,border:`1.5px solid ${T.border}`,
+      padding:'10px 12px',fontSize:13,color:T.text,
+      background:'#fff',fontFamily:'DM Sans,sans-serif',outline:'none',
+    }}
+  />
+);
+
+const Av = ({m, size=32, selected}) => (
+  <div style={{
+    width:size,height:size,borderRadius:'50%',
+    background:selected?m.color:T.surf2,
+    border:`2px solid ${selected?m.color:T.border}`,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    color:selected?'#fff':T.text3,
+    fontSize:size*0.36,fontWeight:700,fontFamily:'Nunito,sans-serif',
+    cursor:'pointer',flexShrink:0,transition:'all 0.15s',
+    boxShadow:selected?`0 2px 8px ${m.color}50`:'none',
+  }}>{m.init}</div>
+);
+
+const SegControl = ({options, value, onChange, color}) => (
+  <div style={{display:'inline-flex',background:T.surf2,borderRadius:99,padding:3,gap:2}}>
+    {options.map(o=>(
+      <div key={o.id||o} onClick={()=>onChange(o.id||o)} style={{
+        padding:'6px 14px',borderRadius:99,fontSize:12,fontWeight:600,cursor:'pointer',
+        background:value===(o.id||o)?'#fff':'transparent',
+        color:value===(o.id||o)?(color||T.text):T.text2,
+        boxShadow:value===(o.id||o)?'0 1px 3px rgba(0,0,0,0.1)':'none',
+        transition:'all 0.15s',
+      }}>{o.label||o}</div>
+    ))}
+  </div>
+);
+
+const PrimaryBtn = ({children, onClick, color, disabled}) => (
+  <div onClick={disabled?null:onClick} style={{
+    background:disabled?T.border:(color||T.mustDo),
+    borderRadius:12,padding:'13px',
+    display:'flex',alignItems:'center',justifyContent:'center',
+    cursor:disabled?'not-allowed':'pointer',
+    boxShadow:disabled?'none':`0 4px 14px ${color||T.mustDo}40`,
+    transition:'all 0.15s',
+  }}>
+    <span style={{fontSize:14,fontWeight:700,color:'#fff'}}>{children}</span>
+  </div>
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION A — Step wizard
+// ════════════════════════════════════════════════════════════════════════════
+
+const STEPS_TASK  = ['Тип','Детайли','Кой','Награда'];
+const STEPS_EVENT = ['Детайли','Кой','Повторение'];
+
+const VariantA = () => {
+  const [mode,     setMode]     = React.useState('task');   // task | event
+  const [step,     setStep]     = React.useState(0);
+  const [dir,      setDir]      = React.useState('forward');
+
+  // Task state
+  const [taskType,   setTaskType]   = React.useState(null);
+  const [title,      setTitle]      = React.useState('');
+  const [desc,       setDesc]       = React.useState('');
+  const [duration,   setDuration]   = React.useState(30);
+  const [pts,        setPts]        = React.useState(15);
+  const [assignees,  setAssignees]  = React.useState([]);
+  const [splitType,  setSplitType]  = React.useState('equal');
+  const [rewardType, setRewardType] = React.useState('none');
+  const [recurrence, setRecurrence] = React.useState('none');
+  const [done,       setDone]       = React.useState(false);
+
+  // Event state
+  const [evColor, setEvColor] = React.useState(T.event);
+
+  const steps = mode==='task' ? STEPS_TASK : STEPS_EVENT;
+  const accent = taskType ? TASK_TYPES.find(t=>t.id===taskType)?.color || T.mustDo : T.mustDo;
+
+  const goNext = () => { setDir('forward'); setStep(s=>s+1); };
+  const goBack = () => { setDir('back');   setStep(s=>s-1); };
+
+  const toggleAssignee = (i) => {
+    setAssignees(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i]);
+  };
+
+  const handleCreate = () => setDone(true);
+
+  if(done) return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{textAlign:'center',animation:'pop 0.4s cubic-bezier(.2,.7,.3,1)'}}>
+        <div style={{fontSize:64,marginBottom:16}}>🎉</div>
+        <div style={{fontSize:22,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:8}}>
+          {mode==='task'?'Задачата е създадена!':'Събитието е създадено!'}
+        </div>
+        <div style={{fontSize:13,color:T.text2,marginBottom:24}}>
+          {title||'Нова задача'} добавена в календара
+        </div>
+        {assignees.length>0 && (
+          <div style={{display:'flex',justifyContent:'center',gap:6,marginBottom:24}}>
+            {assignees.map(i=>(<Av key={i} m={MEMBERS[i]} size={40} selected/>))}
+          </div>
+        )}
+        <div onClick={()=>{setDone(false);setStep(0);setTitle('');setTaskType(null);setAssignees([]);}}
+          style={{background:accent,borderRadius:12,padding:'12px 24px',display:'inline-block',cursor:'pointer',boxShadow:`0 4px 14px ${accent}40`}}>
+          <span style={{fontSize:13,fontWeight:700,color:'#fff'}}>＋ Нова задача</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Nav */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div onClick={step>0?goBack:null} style={{
+          width:32,height:32,borderRadius:8,background:T.surf2,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:16,cursor:'pointer',color:T.text2,opacity:step>0?1:0.3,
+        }}>‹</div>
+        <div style={{flex:1,textAlign:'center'}}>
+          <div style={{fontSize:13,fontWeight:700,color:T.text}}>
+            {mode==='task'?'Нова задача':'Ново събитие'}
+          </div>
+        </div>
+        <div style={{width:32}}/>
+      </div>
+
+      {/* Mode toggle */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'8px 16px',display:'flex',justifyContent:'center',flexShrink:0}}>
+        <SegControl
+          options={[{id:'task',label:'Задача'},{id:'event',label:'Събитие'}]}
+          value={mode}
+          onChange={v=>{setMode(v);setStep(0);}}
+        />
+      </div>
+
+      {/* Progress bar */}
+      <div style={{background:'#fff',padding:'10px 16px 12px',flexShrink:0,borderBottom:`1px solid ${T.border}`}}>
+        <div style={{display:'flex',gap:4,marginBottom:8}}>
+          {steps.map((s,i)=>(
+            <div key={i} style={{
+              flex:1,height:4,borderRadius:99,
+              background:i<=step?accent:T.border,
+              transition:'background 0.3s',
+            }}/>
+          ))}
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between'}}>
+          <span style={{fontSize:11,fontWeight:700,color:accent}}>{steps[step]}</span>
+          <span style={{fontSize:11,color:T.text3}}>{step+1} / {steps.length}</span>
+        </div>
+      </div>
+
+      {/* Step content */}
+      <div style={{
+        flex:1,overflowY:'auto',padding:'16px',
+        animation:`${dir==='forward'?'slideIn':'slideBack'} 0.22s ease-out`,
+      }}>
+
+        {/* TASK STEPS */}
+        {mode==='task' && step===0 && (
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Какъв вид задача?</div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:16}}>Типът определя цвета и поведението</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {TASK_TYPES.map(tp=>(
+                <div key={tp.id} onClick={()=>setTaskType(tp.id)} style={{
+                  display:'flex',alignItems:'center',gap:12,
+                  padding:'12px 14px',borderRadius:12,cursor:'pointer',
+                  background:taskType===tp.id?tp.bg:T.surface,
+                  border:`2px solid ${taskType===tp.id?tp.color:T.border}`,
+                  transition:'all 0.15s',
+                }}>
+                  <div style={{
+                    width:40,height:40,borderRadius:10,
+                    background:tp.color,display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:20,flexShrink:0,
+                  }}>{tp.icon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:T.text}}>{tp.label}</div>
+                    <div style={{fontSize:11,color:T.text3}}>{tp.desc}</div>
+                  </div>
+                  {taskType===tp.id && <div style={{color:tp.color,fontSize:18}}>✓</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mode==='task' && step===1 && (
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div>
+              <Label required>Заглавие</Label>
+              <Input placeholder="напр. Изчисти кухнята" value={title} onChange={setTitle}/>
+            </div>
+            <div>
+              <Label>Описание</Label>
+              <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Детайли..."
+                style={{width:'100%',borderRadius:10,border:`1.5px solid ${T.border}`,
+                  padding:'10px 12px',fontSize:13,color:T.text,background:'#fff',
+                  fontFamily:'DM Sans,sans-serif',outline:'none',resize:'none',height:72}}/>
+            </div>
+            <div>
+              <Label>Продължителност</Label>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {[10,15,20,30,45,60,90].map(d=>(
+                  <div key={d} onClick={()=>setDuration(d)} style={{
+                    padding:'7px 14px',borderRadius:99,fontSize:12,fontWeight:600,cursor:'pointer',
+                    background:duration===d?accent:T.surf2,
+                    color:duration===d?'#fff':T.text2,
+                    border:`1.5px solid ${duration===d?accent:T.border}`,
+                    transition:'all 0.15s',
+                  }}>{d} мин</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Точки</Label>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {[5,10,15,20,25,30].map(p=>(
+                  <div key={p} onClick={()=>setPts(p)} style={{
+                    padding:'7px 14px',borderRadius:99,fontSize:12,fontWeight:600,cursor:'pointer',
+                    background:pts===p?T.challenge:T.surf2,
+                    color:pts===p?'#fff':T.text2,
+                    border:`1.5px solid ${pts===p?T.challenge:T.border}`,
+                    transition:'all 0.15s',
+                    display:'flex',alignItems:'center',gap:4,
+                  }}>⭐ {p}</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Повторение</Label>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {RECURRENCE_OPTIONS.map(r=>(
+                  <div key={r.id} onClick={()=>setRecurrence(r.id)} style={{
+                    padding:'7px 14px',borderRadius:99,fontSize:12,fontWeight:600,cursor:'pointer',
+                    background:recurrence===r.id?accent:T.surf2,
+                    color:recurrence===r.id?'#fff':T.text2,
+                    border:`1.5px solid ${recurrence===r.id?accent:T.border}`,
+                    transition:'all 0.15s',
+                  }}>{r.label}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode==='task' && step===2 && (
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Кой изпълнява?</div>
+              <div style={{fontSize:12,color:T.text3,marginBottom:16}}>Избери един или повече членове</div>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                {MEMBERS.map((m,i)=>(
+                  <div key={i} onClick={()=>toggleAssignee(i)} style={{
+                    display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',
+                  }}>
+                    <Av m={m} size={48} selected={assignees.includes(i)}/>
+                    <span style={{fontSize:11,fontWeight:assignees.includes(i)?700:400,color:assignees.includes(i)?m.color:T.text3}}>{m.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {assignees.length>1 && (
+              <div>
+                <Label>Разпределение на точките</Label>
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {[
+                    {id:'equal',label:'Равно',desc:'Всеки получава pts ÷ брой'},
+                    {id:'full', label:'Пълни',desc:'Всеки получава пълните точки'},
+                    {id:'custom',label:'По избор',desc:'Родителят задава % при одобрение'},
+                  ].map(s=>(
+                    <div key={s.id} onClick={()=>setSplitType(s.id)} style={{
+                      display:'flex',alignItems:'center',gap:10,padding:'10px 12px',
+                      borderRadius:10,cursor:'pointer',
+                      background:splitType===s.id?accent+'12':T.surf2,
+                      border:`1.5px solid ${splitType===s.id?accent:T.border}`,
+                      transition:'all 0.15s',
+                    }}>
+                      <div style={{
+                        width:18,height:18,borderRadius:'50%',flexShrink:0,
+                        border:`2px solid ${splitType===s.id?accent:T.border}`,
+                        background:splitType===s.id?accent:'transparent',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                      }}>
+                        {splitType===s.id&&<div style={{width:6,height:6,borderRadius:'50%',background:'#fff'}}/>}
+                      </div>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,color:T.text}}>{s.label}</div>
+                        <div style={{fontSize:10,color:T.text3}}>{s.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode==='task' && step===3 && (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Вид награда</div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:8}}>Допълнително към точките</div>
+            {REWARD_TYPES.map(r=>(
+              <div key={r.id} onClick={()=>setRewardType(r.id)} style={{
+                display:'flex',alignItems:'center',gap:12,padding:'12px 14px',
+                borderRadius:12,cursor:'pointer',
+                background:rewardType===r.id?T.eventBg:T.surface,
+                border:`2px solid ${rewardType===r.id?T.event:T.border}`,
+                transition:'all 0.15s',
+              }}>
+                <span style={{fontSize:24,width:36,textAlign:'center'}}>{r.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:T.text}}>{r.label}</div>
+                  <div style={{fontSize:11,color:T.text3}}>{r.desc}</div>
+                </div>
+                {rewardType===r.id && <div style={{color:T.event,fontSize:18}}>✓</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* EVENT STEPS */}
+        {mode==='event' && step===0 && (
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div>
+              <Label required>Заглавие</Label>
+              <Input placeholder="напр. Урок по пиано" value={title} onChange={setTitle}/>
+            </div>
+            <div>
+              <Label>Цвят</Label>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {EVENT_COLORS.map((c,i)=>(
+                  <div key={i} onClick={()=>setEvColor(c)} style={{
+                    width:36,height:36,borderRadius:10,background:c,cursor:'pointer',
+                    border:`3px solid ${evColor===c?'#fff':'transparent'}`,
+                    boxShadow:evColor===c?`0 0 0 2px ${c},0 2px 8px ${c}50`:'none',
+                    transition:'all 0.15s',
+                  }}/>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <div style={{flex:1}}>
+                <Label required>Начален час</Label>
+                <Input type="time" value="16:00" onChange={()=>{}}/>
+              </div>
+              <div style={{flex:1}}>
+                <Label>Край</Label>
+                <Input type="time" value="17:00" onChange={()=>{}}/>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode==='event' && step===1 && (
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Кои присъстват?</div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:16}}>Изберете участниците</div>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              {MEMBERS.map((m,i)=>(
+                <div key={i} onClick={()=>toggleAssignee(i)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer'}}>
+                  <Av m={m} size={48} selected={assignees.includes(i)}/>
+                  <span style={{fontSize:11,fontWeight:assignees.includes(i)?700:400,color:assignees.includes(i)?m.color:T.text3}}>{m.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mode==='event' && step===2 && (
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:4}}>Повторение</div>
+            <div style={{fontSize:12,color:T.text3,marginBottom:16}}>Колко често се повтаря?</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {RECURRENCE_OPTIONS.map(r=>(
+                <div key={r.id} onClick={()=>setRecurrence(r.id)} style={{
+                  padding:'11px 14px',borderRadius:10,cursor:'pointer',
+                  background:recurrence===r.id?evColor+'18':T.surface,
+                  border:`1.5px solid ${recurrence===r.id?evColor:T.border}`,
+                  fontSize:13,fontWeight:recurrence===r.id?700:400,
+                  color:recurrence===r.id?evColor:T.text,
+                  transition:'all 0.15s',
+                  display:'flex',alignItems:'center',justifyContent:'space-between',
+                }}>
+                  {r.label}
+                  {recurrence===r.id && <span style={{color:evColor}}>✓</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{height:20}}/>
+      </div>
+
+      {/* Footer action */}
+      <div style={{background:'#fff',borderTop:`1px solid ${T.border}`,padding:'12px 16px',flexShrink:0}}>
+        {step<steps.length-1
+          ? <PrimaryBtn color={accent} onClick={goNext} disabled={
+              (mode==='task'&&step===0&&!taskType)||
+              (step===1&&!title)
+            }>Напред →</PrimaryBtn>
+          : <PrimaryBtn color={mode==='task'?accent:evColor} onClick={handleCreate} disabled={!title}>
+              {mode==='task'?'✓ Създай задача':'✓ Създай събитие'}
+            </PrimaryBtn>
+        }
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// VARIATION B — Single scroll form (power user)
+// ════════════════════════════════════════════════════════════════════════════
+
+const VariantB = () => {
+  const [mode,       setMode]       = React.useState('task');
+  const [taskType,   setTaskType]   = React.useState('household');
+  const [title,      setTitle]      = React.useState('');
+  const [duration,   setDuration]   = React.useState(30);
+  const [pts,        setPts]        = React.useState(15);
+  const [assignees,  setAssignees]  = React.useState([1]);
+  const [rewardType, setRewardType] = React.useState('mystery');
+  const [recurrence, setRecurrence] = React.useState('none');
+  const [done,       setDone]       = React.useState(false);
+
+  const tp = TASK_TYPES.find(t=>t.id===taskType)||TASK_TYPES[0];
+
+  if(done) return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
+      <div style={{animation:'pop 0.4s cubic-bezier(.2,.7,.3,1)'}}>
+        <div style={{fontSize:64,marginBottom:12}}>✅</div>
+        <div style={{fontSize:20,fontWeight:900,color:T.text,fontFamily:'Nunito,sans-serif',marginBottom:6}}>{title||'Новата задача'} е създадена!</div>
+        <div style={{fontSize:12,color:T.text3,marginBottom:20}}>Добавена в календара на семейството</div>
+        <div onClick={()=>{setDone(false);setTitle('');}} style={{background:tp.color,borderRadius:12,padding:'11px 24px',display:'inline-block',cursor:'pointer'}}>
+          <span style={{fontSize:13,fontWeight:700,color:'#fff'}}>＋ Нова задача</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.bg,fontFamily:'DM Sans,sans-serif',overflow:'hidden'}}>
+
+      {/* Nav */}
+      <div style={{
+        background:'#fff',borderBottom:`1px solid ${T.border}`,
+        padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0,
+      }}>
+        <div style={{width:32,height:32,borderRadius:8,background:T.surf2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,cursor:'pointer',color:T.text2}}>✕</div>
+        <div style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>Нова задача</div>
+        <div onClick={()=>title&&setDone(true)} style={{
+          background:title?tp.color:T.border,borderRadius:8,padding:'6px 14px',cursor:title?'pointer':'not-allowed',
+          transition:'background 0.15s',
+        }}>
+          <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>Запази</span>
+        </div>
+      </div>
+
+      {/* Mode toggle */}
+      <div style={{background:'#fff',borderBottom:`1px solid ${T.border}`,padding:'8px 16px',display:'flex',justifyContent:'center',flexShrink:0}}>
+        <SegControl options={[{id:'task',label:'Задача'},{id:'event',label:'Събитие'}]} value={mode} onChange={setMode}/>
+      </div>
+
+      {/* Scroll form */}
+      <div style={{flex:1,overflowY:'auto',padding:'0 0 32px'}}>
+
+        {/* Type picker (task only) */}
+        {mode==='task' && (
+          <div style={{background:'#fff',marginBottom:8}}>
+            <div style={{padding:'12px 16px 8px',fontSize:11,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase'}}>Тип задача</div>
+            <div style={{display:'flex',gap:0,overflowX:'auto',padding:'0 12px 12px'}}>
+              {TASK_TYPES.map(t=>(
+                <div key={t.id} onClick={()=>setTaskType(t.id)} style={{
+                  display:'flex',flexDirection:'column',alignItems:'center',gap:6,
+                  padding:'10px 10px',borderRadius:12,cursor:'pointer',flexShrink:0,
+                  background:taskType===t.id?t.bg:'transparent',
+                  border:`2px solid ${taskType===t.id?t.color:'transparent'}`,
+                  transition:'all 0.15s',marginRight:4,
+                }}>
+                  <span style={{fontSize:22}}>{t.icon}</span>
+                  <span style={{fontSize:10,fontWeight:taskType===t.id?700:500,color:taskType===t.id?t.color:T.text3,textAlign:'center'}}>{t.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Title */}
+        <div style={{background:'#fff',marginBottom:8,padding:'12px 16px'}}>
+          <Label required>Заглавие</Label>
+          <Input placeholder={mode==='task'?'напр. Изчисти кухнята':'напр. Урок по пиано'} value={title} onChange={setTitle}/>
+        </div>
+
+        {/* Duration + Points (task only) */}
+        {mode==='task' && (
+          <div style={{background:'#fff',marginBottom:8,padding:'12px 16px'}}>
+            <div style={{display:'flex',gap:12}}>
+              <div style={{flex:1}}>
+                <Label>Продължителност</Label>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                  {[15,20,30,45,60].map(d=>(
+                    <div key={d} onClick={()=>setDuration(d)} style={{
+                      padding:'5px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                      background:duration===d?tp.color:T.surf2,color:duration===d?'#fff':T.text2,
+                      border:`1px solid ${duration===d?tp.color:T.border}`,transition:'all 0.12s',
+                    }}>{d}'</div>
+                  ))}
+                </div>
+              </div>
+              <div style={{flex:1}}>
+                <Label>Точки</Label>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                  {[10,15,20,25,30].map(p=>(
+                    <div key={p} onClick={()=>setPts(p)} style={{
+                      padding:'5px 10px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                      background:pts===p?T.challenge:T.surf2,color:pts===p?'#fff':T.text2,
+                      border:`1px solid ${pts===p?T.challenge:T.border}`,transition:'all 0.12s',
+                    }}>⭐{p}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assignees */}
+        <div style={{background:'#fff',marginBottom:8,padding:'12px 16px'}}>
+          <Label>{mode==='task'?'Изпълнители':'Участници'}</Label>
+          <div style={{display:'flex',gap:10}}>
+            {MEMBERS.map((m,i)=>(
+              <div key={i} onClick={()=>{
+                setAssignees(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i]);
+              }} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer'}}>
+                <Av m={m} size={40} selected={assignees.includes(i)}/>
+                <span style={{fontSize:10,fontWeight:assignees.includes(i)?700:400,color:assignees.includes(i)?m.color:T.text3}}>{m.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recurrence */}
+        <div style={{background:'#fff',marginBottom:8,padding:'12px 16px'}}>
+          <Label>Повторение</Label>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {RECURRENCE_OPTIONS.map(r=>(
+              <div key={r.id} onClick={()=>setRecurrence(r.id)} style={{
+                padding:'6px 12px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                background:recurrence===r.id?tp.color:T.surf2,
+                color:recurrence===r.id?'#fff':T.text2,
+                border:`1px solid ${recurrence===r.id?tp.color:T.border}`,
+                transition:'all 0.12s',
+              }}>{r.label}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Reward (task only) */}
+        {mode==='task' && (
+          <div style={{background:'#fff',marginBottom:8,padding:'12px 16px'}}>
+            <Label>Награда</Label>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {REWARD_TYPES.map(r=>(
+                <div key={r.id} onClick={()=>setRewardType(r.id)} style={{
+                  display:'flex',alignItems:'center',gap:5,
+                  padding:'6px 12px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
+                  background:rewardType===r.id?T.eventBg:T.surf2,
+                  color:rewardType===r.id?T.event:T.text2,
+                  border:`1.5px solid ${rewardType===r.id?T.event:T.border}`,
+                  transition:'all 0.12s',
+                }}>{r.icon} {r.label}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary preview */}
+        {title && (
+          <div style={{margin:'0 12px',background:tp.bg,borderRadius:14,border:`1.5px solid ${tp.color}30`,padding:'12px 14px',animation:'fadeUp 0.2s ease-out'}}>
+            <div style={{fontSize:10,fontWeight:700,color:T.text3,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Преглед</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:20}}>{tp.icon}</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:T.text}}>{title}</div>
+                <div style={{fontSize:11,color:tp.color,fontWeight:600}}>{tp.label} · {duration} мин · ⭐{pts} т.</div>
+              </div>
+              <div style={{marginLeft:'auto',display:'flex'}}>
+                {assignees.map(i=>(<div key={i} style={{
+                  width:22,height:22,borderRadius:'50%',background:MEMBERS[i].color,
+                  border:'2px solid #fff',marginLeft:-4,
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:'#fff',fontFamily:'Nunito,sans-serif',
+                }}>{MEMBERS[i].init}</div>))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── App ───────────────────────────────────────────────────────────────────
+
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="new" title="/tasks/new — Нова задача / събитие" subtitle="Mobile · Parent only · Task & Event creation">
+      <DCArtboard id="wizard" label="A · Step wizard (фокусиран)" width={375} height={780}>
+        <VariantA/>
+      </DCArtboard>
+      <DCArtboard id="scroll" label="B · Single scroll (power user)" width={375} height={780}>
+        <VariantB/>
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root"></div>
+</body>
+</html>
