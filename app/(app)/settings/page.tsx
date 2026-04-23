@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { signOut } from 'next-auth/react';
 import { T } from '@/lib/tokens';
 import { getMembers, getFamily, getCurrentMember, updateFamily, updateMember } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
@@ -197,6 +198,15 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
         ))}
       </SectionCard>
 
+      {/* Logout */}
+      <SectionCard title="Акаунт">
+        <Row last>
+          <div onClick={() => signOut({ callbackUrl: '/login' })} style={{ padding: '12px 0', textAlign: 'center', cursor: 'pointer' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.mustDo }}>Излез от акаунта</span>
+          </div>
+        </Row>
+      </SectionCard>
+
       {/* Danger zone */}
       <SectionCard title="Опасна зона">
         <Row last>
@@ -281,6 +291,14 @@ function ChildSettings({ currentMember, onRefresh }: { currentMember: CurrMember
               <div style={{ fontSize: 13, fontWeight: 700, color: T.text2 }}>Само за родители</div>
               <div style={{ fontSize: 12, color: T.text3, marginTop: 4, lineHeight: 1.5 }}>Само родителите могат да управляват семейните настройки — точки, членове и одобрения.</div>
             </div>
+          </div>
+        </Row>
+      </SectionCard>
+
+      <SectionCard title="Акаунт">
+        <Row last>
+          <div onClick={() => signOut({ callbackUrl: '/login' })} style={{ padding: '12px 0', textAlign: 'center', cursor: 'pointer' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.mustDo }}>Излез от акаунта</span>
           </div>
         </Row>
       </SectionCard>
