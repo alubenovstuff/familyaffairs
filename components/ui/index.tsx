@@ -65,7 +65,7 @@ export const Pill = ({ color, bg, small = false, children }: PillProps) => (
   </span>
 );
 
-export const TypePill = ({ type, small = false }: { type: TaskType | 'event'; small?: boolean }) => {
+export const TypePill = ({ type, small = false }: { type: string; small?: boolean }) => {
   const t = TASK_TYPES[type as keyof typeof TASK_TYPES] || TASK_TYPES.household;
   return <Pill color={t.color} bg={t.bg} small={small}>{t.label}</Pill>;
 };

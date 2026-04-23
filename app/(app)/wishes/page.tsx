@@ -1,47 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { T } from '@/lib/tokens';
-import { WISHES, TASKS, MEMBERS } from '@/lib/mock-data';
+import { getWishes, getTasks, getMembers, getCurrentMember, createWish, approveWish } from '@/lib/actions';
 import { MobileShell, BottomNav, FAB } from '@/components/layout/Shell';
-import { ToggleTabs, Pill, Btn, Confetti } from '@/components/ui';
-import type { WishItem } from '@/types';
+import { ToggleTabs, Pill, Confetti } from '@/components/ui';
+
+type WishRow = Awaited<ReturnType<typeof getWishes>>[number];
+type TaskRow = Awaited<ReturnType<typeof getTasks>>[number];
+type Member = Awaited<ReturnType<typeof getMembers>>[number];
+type CurrentMember = Awaited<ReturnType<typeof getCurrentMember>>;
+
+const WISH_EMOJIS = ['🎮', '🎬', '🍕', '📚', '🎨', '🌟'];
 
 // ── WishCard ──────────────────────────────────────────────────────────────
 
-function WishCard({ wish, locked, onClaim }: { wish: WishItem; locked: boolean; onClaim: () => void }) {
-  const statusStyle = {
-    available: { bg: '#fff', border: T.border },
-    pending: { bg: '#fffbf0', border: `${T.challenge}60` },
-    redeemed: { bg: '#f0fdf6', border: `${T.household}60` },
-  }[wish.status] || { bg: '#fff', border: T.border };
+function WishCard({ wish, locked, onClaim }: { wish: WishRow; locked: boolean; onClaim?: () => void }) {
+  const isPending = wish.status === 'pending';
+  const isApproved = wish.status === 'approved';
+  const borderColor = isPending ? `${T.challenge}60` : isApproved ? `${T.household}60` : T.border;
+  const bg = isPending ? '#fffbf0' : isApproved ? '#f0fdf6' : '#fff';
 
   return (
     <div style={{
-      background: statusStyle.bg, borderRadius: 14,
-      border: `1px solid ${statusStyle.border}`,
+      background: bg, borderRadius: 14,
+      border: `1px solid ${borderColor}`,
       overflow: 'hidden', opacity: locked ? 0.65 : 1,
       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
     }}>
       <div style={{
         height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36,
-        background: wish.mystery
-          ? 'linear-gradient(135deg, #667eea, #764ba2)'
-          : `${T.challenge}18`,
-      }}>{wish.mystery ? '🎁' : '🎮'}</div>
+        background: `${T.challenge}18`,
+      }}>{wish.emoji ?? '🎁'}</div>
       <div style={{ padding: '10px 12px' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 6 }}>
-          {wish.mystery ? '??? Изненада' : wish.title}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 6 }}>{wish.title}</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif', display: 'flex', alignItems: 'center', gap: 3 }}>
-            ⭐ {wish.mystery ? '??' : wish.pts}
+            ⭐ {wish.price}
           </div>
-          {wish.status === 'available' && !locked && (
+          {!isPending && !isApproved && !locked && onClaim && (
             <div onClick={onClaim} style={{ background: T.mustDo, borderRadius: 99, padding: '4px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Заяви</div>
           )}
-          {wish.status === 'pending' && <Pill color={T.challenge} small>Чака</Pill>}
-          {wish.status === 'redeemed' && <Pill color={T.household} small>✓</Pill>}
+          {isPending && <Pill color={T.challenge} small>Чака</Pill>}
+          {isApproved && <Pill color={T.household} small>✓</Pill>}
         </div>
         {locked && <div style={{ fontSize: 10, color: T.mustDo, marginTop: 4, fontWeight: 600 }}>Заверши must-do задачи</div>}
       </div>
@@ -49,74 +50,47 @@ function WishCard({ wish, locked, onClaim }: { wish: WishItem; locked: boolean; 
   );
 }
 
-// ── Mystery reveal overlay ────────────────────────────────────────────────
-
-function MysteryReveal({ onClose }: { onClose: () => void }) {
-  const [revealed, setRevealed] = useState(false);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Confetti />
-      <div style={{ background: '#fff', borderRadius: 24, padding: 32, textAlign: 'center', width: '100%', maxWidth: 320, position: 'relative' }}>
-        {!revealed ? (
-          <>
-            <div style={{ fontSize: 72, marginBottom: 16, animation: 'float 2s infinite' }}>🎁</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>Твоята тайна награда!</div>
-            <div style={{ fontSize: 13, color: T.text2, marginBottom: 24 }}>Тапни за да разкриеш</div>
-            <div onClick={() => setRevealed(true)} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: 12, padding: '13px', cursor: 'pointer' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>✨ Разкрий наградата</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 72, marginBottom: 16 }} className="animate-pop">🎮</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: T.text, fontFamily: 'Nunito, sans-serif', marginBottom: 4 }}>Видеоигри 1ч!</div>
-            <div style={{ fontSize: 13, color: T.text2, marginBottom: 8 }}>Заявката е изпратена за одобрение</div>
-            <div style={{ background: T.challengeBg, borderRadius: 99, padding: '4px 14px', display: 'inline-block', marginBottom: 20 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>⭐ 80 т.</span>
-            </div>
-            <br />
-            <div onClick={onClose} style={{ background: T.mustDo, borderRadius: 12, padding: '13px 24px', cursor: 'pointer', display: 'inline-block', boxShadow: `0 4px 16px ${T.mustDo}40` }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Супер! 🎉</span>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Variant A — Child view ────────────────────────────────────────────────
 
-function ChildView() {
-  const mustDoTasks = TASKS.filter(t => t.type === 'must_do' && t.status === 'active');
-  const [completedMustDo, setCompletedMustDo] = useState<number[]>([]);
-  const [showMystery, setShowMystery] = useState(false);
-  const [claimedIds, setClaimedIds] = useState<number[]>([]);
+function ChildView({ wishes, tasks, currentMember, onRefresh }: { wishes: WishRow[]; tasks: TaskRow[]; currentMember: CurrentMember; onRefresh: () => void }) {
+  const mustDoTasks = tasks.filter(t => t.type === 'must_do' && t.status === 'active');
+  const [completedMustDo, setCompletedMustDo] = useState<string[]>([]);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [newWishTitle, setNewWishTitle] = useState('');
+  const [newWishEmoji, setNewWishEmoji] = useState('🎁');
+  const [newWishPrice, setNewWishPrice] = useState(50);
+  const [saving, setSaving] = useState(false);
 
-  const allMustDoDone = completedMustDo.length >= mustDoTasks.length;
-  const toggleMustDo = (id: number) =>
-    setClaimedIds(prev => prev.includes(id) ? prev : prev); // keep claimed
-  const toggleDone = (id: number) =>
+  const allMustDoDone = mustDoTasks.length === 0 || completedMustDo.length >= mustDoTasks.length;
+
+  const toggleDone = (id: string) =>
     setCompletedMustDo(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const handleAddWish = async () => {
+    if (!newWishTitle.trim() || saving) return;
+    setSaving(true);
+    try {
+      await createWish(newWishTitle.trim(), newWishEmoji, newWishPrice);
+      setNewWishTitle('');
+      setNewWishEmoji('🎁');
+      setShowAddSheet(false);
+      onRefresh();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {showMystery && <MysteryReveal onClose={() => setShowMystery(false)} />}
-
-      {/* Header */}
       <div style={{ background: '#fff', borderBottom: `1px solid ${T.border}`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ fontSize: 20, fontWeight: 900, color: T.text, fontFamily: 'Nunito, sans-serif' }}>Желания</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.challengeBg, borderRadius: 99, padding: '4px 12px' }}>
           <span style={{ fontSize: 16 }}>⭐</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>95</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>{currentMember?.points_balance ?? 0}</span>
         </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {/* Must-do gate */}
         {!allMustDoDone && (
           <div style={{ background: T.mustDoBg, borderRadius: 14, padding: '12px 14px', marginBottom: 16, border: `1px solid ${T.mustDo}30` }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.mustDo, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -138,25 +112,29 @@ function ChildView() {
           </div>
         )}
 
-        {allMustDoDone && (
+        {allMustDoDone && mustDoTasks.length > 0 && (
           <div style={{ background: T.householdBg, borderRadius: 12, padding: '10px 14px', marginBottom: 16, border: `1px solid ${T.household}30`, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 20 }}>✅</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: T.household }}>Готов да заявиш награди!</span>
           </div>
         )}
 
-        {/* Rewards grid */}
-        <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Налични награди</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Желания</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          {WISHES.map(w => (
-            <WishCard key={w.id} wish={w} locked={!allMustDoDone && w.status === 'available'} onClaim={() => { if (w.mystery) setShowMystery(true); }} />
+          {wishes.map(w => (
+            <WishCard key={w.id} wish={w} locked={!allMustDoDone && w.status !== 'pending' && w.status !== 'approved'} />
           ))}
+          {wishes.length === 0 && (
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 20px', color: T.text3 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🎁</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Добави своето първо желание!</div>
+            </div>
+          )}
         </div>
       </div>
 
       <FAB onClick={() => setShowAddSheet(true)} />
 
-      {/* Add wish sheet */}
       {showAddSheet && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: 20 }}>
@@ -165,13 +143,21 @@ function ChildView() {
               <div onClick={() => setShowAddSheet(false)} style={{ fontSize: 20, color: T.text3, cursor: 'pointer' }}>✕</div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {['🎮', '🎬', '🍕', '📚', '🎨', '🌟'].map(e => (
-                <div key={e} style={{ fontSize: 28, cursor: 'pointer', padding: 6, borderRadius: 8, background: T.surf2 }}>{e}</div>
+              {WISH_EMOJIS.map(e => (
+                <div key={e} onClick={() => setNewWishEmoji(e)} style={{ fontSize: 28, cursor: 'pointer', padding: 6, borderRadius: 8, background: newWishEmoji === e ? T.challengeBg : T.surf2, border: `2px solid ${newWishEmoji === e ? T.challenge : 'transparent'}` }}>{e}</div>
               ))}
             </div>
             <input value={newWishTitle} onChange={e => setNewWishTitle(e.target.value)} placeholder="Какво желаеш?" style={{ width: '100%', borderRadius: 10, padding: '12px 14px', fontSize: 14, border: `1.5px solid ${T.border}`, background: '#fff', color: T.text, fontFamily: 'DM Sans, sans-serif', outline: 'none', marginBottom: 12 }} />
-            <div onClick={() => setShowAddSheet(false)} style={{ background: newWishTitle.trim() ? T.mustDo : T.border, borderRadius: 12, padding: 14, textAlign: 'center', cursor: newWishTitle.trim() ? 'pointer' : 'not-allowed' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Добави желанието</span>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 6 }}>Цена (точки)</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[20, 50, 80, 100, 150].map(v => (
+                  <div key={v} onClick={() => setNewWishPrice(v)} style={{ flex: 1, padding: '6px 4px', borderRadius: 8, textAlign: 'center', cursor: 'pointer', fontSize: 11, fontWeight: 700, background: newWishPrice === v ? T.challenge : T.surf2, color: newWishPrice === v ? '#fff' : T.text2, border: `1px solid ${newWishPrice === v ? T.challenge : T.border}` }}>{v}</div>
+                ))}
+              </div>
+            </div>
+            <div onClick={handleAddWish} style={{ background: newWishTitle.trim() && !saving ? T.mustDo : T.border, borderRadius: 12, padding: 14, textAlign: 'center', cursor: newWishTitle.trim() && !saving ? 'pointer' : 'not-allowed' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{saving ? 'Запазване...' : 'Добави желанието'}</span>
             </div>
           </div>
         </div>
@@ -184,14 +170,24 @@ function ChildView() {
 
 // ── Variant B — Parent view ───────────────────────────────────────────────
 
-function ParentView() {
+function ParentView({ wishes, members, onRefresh }: { wishes: WishRow[]; members: Member[]; onRefresh: () => void }) {
   const [tab, setTab] = useState(0);
-  const [pricedFor, setPricedFor] = useState<number | null>(null);
-  const [prices, setPrices] = useState<Record<number, number>>({});
-  const [approvedIds, setApprovedIds] = useState<number[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const pendingWishes = WISHES.filter(w => w.status === 'pending');
-  const availableWishes = WISHES.filter(w => w.status === 'available');
+  const pendingWishes = wishes.filter(w => w.status === 'pending');
+  const catalogWishes = wishes.filter(w => w.status !== 'pending');
+
+  const getMemberById = (id: string) => members.find(m => m.id === id);
+
+  const handleApprove = async (wishId: string) => {
+    setApprovingId(wishId);
+    try {
+      await approveWish(wishId);
+      onRefresh();
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -211,67 +207,29 @@ function ParentView() {
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
         {tab === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {pendingWishes.map((w, wi) => {
-              const priced = prices[w.id] !== undefined;
-              const approved = approvedIds.includes(w.id);
-              const member = MEMBERS[wi % MEMBERS.length];
+            {pendingWishes.map(w => {
+              const member = getMemberById(w.member_id);
+              const isApproving = approvingId === w.id;
               return (
                 <div key={w.id} style={{ background: '#fff', borderRadius: 14, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
                   <div style={{ padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: member.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>{member.init}</div>
+                      {member && (
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: member.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>{member.init}</div>
+                      )}
                       <div>
-                        <div style={{ fontSize: 11, color: T.text3 }}>Заявено от {member.name}</div>
+                        <div style={{ fontSize: 11, color: T.text3 }}>Заявено от {member?.name ?? '...'}</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{w.title}</div>
                       </div>
-                    </div>
-
-                    {!priced ? (
-                      <>
-                        {pricedFor === w.id ? (
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: T.text, marginBottom: 6 }}>Задай цена</div>
-                            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                              {[20, 50, 80, 100, 150].map(v => (
-                                <div key={v} onClick={() => setPrices(p => ({ ...p, [w.id]: v }))} style={{
-                                  flex: 1, padding: '6px 4px', borderRadius: 8, textAlign: 'center', cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                                  background: prices[w.id] === v ? T.challenge : T.surf2,
-                                  color: prices[w.id] === v ? '#fff' : T.text2,
-                                  border: `1px solid ${prices[w.id] === v ? T.challenge : T.border}`,
-                                }}>{v}</div>
-                              ))}
-                            </div>
-                            <div onClick={() => setPricedFor(null)} style={{ background: prices[w.id] ? T.mustDo : T.border, borderRadius: 10, padding: '8px', textAlign: 'center', cursor: prices[w.id] ? 'pointer' : 'not-allowed' }}>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>Потвърди цена</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div onClick={() => setPricedFor(w.id)} style={{ background: T.challengeBg, borderRadius: 10, padding: '8px 14px', cursor: 'pointer', textAlign: 'center' }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: T.challenge }}>⭐ Задай цена</span>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <div style={{ background: T.challengeBg, borderRadius: 99, padding: '4px 12px' }}>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>⭐ {prices[w.id]} т.</span>
-                        </div>
-                        {!approved ? (
-                          <>
-                            <div onClick={() => setApprovedIds(p => [...p, w.id])} style={{ flex: 1, background: T.householdBg, borderRadius: 10, padding: '8px', textAlign: 'center', cursor: 'pointer', border: `1.5px solid ${T.household}` }}>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: T.household }}>✓ Одобри</span>
-                            </div>
-                            <div style={{ flex: 1, background: T.mustDoBg, borderRadius: 10, padding: '8px', textAlign: 'center', cursor: 'pointer', border: `1.5px solid ${T.mustDo}` }}>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: T.mustDo }}>✕ Откажи</span>
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ background: T.householdBg, borderRadius: 99, padding: '4px 12px', border: `1px solid ${T.household}30` }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: T.household }}>✓ Одобрено</span>
-                          </div>
-                        )}
+                      <div style={{ marginLeft: 'auto', background: T.challengeBg, borderRadius: 99, padding: '4px 10px' }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>⭐ {w.price}</span>
                       </div>
-                    )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div onClick={() => !isApproving && handleApprove(w.id)} style={{ flex: 1, background: T.householdBg, borderRadius: 10, padding: '8px', textAlign: 'center', cursor: isApproving ? 'not-allowed' : 'pointer', border: `1.5px solid ${T.household}`, opacity: isApproving ? 0.6 : 1 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: T.household }}>{isApproving ? '...' : '✓ Одобри'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -287,13 +245,12 @@ function ParentView() {
 
         {tab === 1 && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {availableWishes.map(w => (
-              <WishCard key={w.id} wish={w} locked={false} onClaim={() => {}} />
+            {catalogWishes.map(w => (
+              <WishCard key={w.id} wish={w} locked={false} />
             ))}
-            <div style={{ borderRadius: 14, border: `1.5px dashed ${T.border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 140, cursor: 'pointer', gap: 6, color: T.text3 }}>
-              <span style={{ fontSize: 28 }}>＋</span>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>Добави награда</span>
-            </div>
+            {catalogWishes.length === 0 && (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 20px', color: T.text3, fontSize: 13 }}>Няма одобрени желания</div>
+            )}
           </div>
         )}
         <div style={{ height: 80 }} />
@@ -308,6 +265,19 @@ function ParentView() {
 
 export default function WishesPage() {
   const [variant, setVariant] = useState(0);
+  const [wishes, setWishes] = useState<WishRow[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [currentMember, setCurrentMember] = useState<CurrentMember>(null);
+
+  const loadData = () => {
+    getWishes().then(setWishes);
+    getTasks().then(setTasks);
+    getMembers().then(setMembers);
+    getCurrentMember().then(setCurrentMember);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   return (
     <MobileShell>
@@ -316,7 +286,10 @@ export default function WishesPage() {
           <ToggleTabs options={['Дете', 'Родител']} active={variant} onChange={setVariant} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {variant === 0 ? <ChildView /> : <ParentView />}
+          {variant === 0
+            ? <ChildView wishes={wishes} tasks={tasks} currentMember={currentMember} onRefresh={loadData} />
+            : <ParentView wishes={wishes} members={members} onRefresh={loadData} />
+          }
         </div>
       </div>
     </MobileShell>

@@ -3,6 +3,10 @@
 import { createServerClient } from './supabase';
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
+import type { Database } from './db.types';
+
+type TaskRow = Database['public']['Tables']['tasks']['Row'];
+type TaskWithAssignees = TaskRow & { task_assignees: { member_id: string }[] };
 
 async function getSession() {
   const session = await auth();
@@ -94,7 +98,7 @@ export async function getTasks() {
     .eq('family_id', member.family_id)
     .order('created_at', { ascending: false });
 
-  return data ?? [];
+  return (data ?? []) as unknown as TaskWithAssignees[];
 }
 
 export async function createTask(input: {
@@ -190,6 +194,54 @@ export async function submitTaskForApproval(taskId: string) {
   const db = createServerClient();
   await db.from('tasks').update({ status: 'pending_approval' }).eq('id', taskId);
   revalidatePath('/tasks');
+}
+
+export async function getTask(taskId: string): Promise<TaskWithAssignees | null> {
+  await getSession();
+  const db = createServerClient();
+  const { data } = await db
+    .from('tasks')
+    .select('*, task_assignees(member_id)')
+    .eq('id', taskId)
+    .single();
+  return data as unknown as TaskWithAssignees | null;
+}
+
+// ── Family ────────────────────────────────────────────────────────────────
+
+export async function getFamily() {
+  const session = await getSession();
+  const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) return null;
+  const { data } = await db.from('families').select('*').eq('id', member.family_id).single();
+  return data;
+}
+
+export async function updateFamily(updates: { name?: string; daily_base_pts?: number; auto_approve?: string }) {
+  const session = await getSession();
+  const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) throw new Error('No family found');
+  await db.from('families').update(updates).eq('id', member.family_id);
+  revalidatePath('/settings');
+}
+
+export async function updateMember(memberId: string, updates: { name?: string; color?: string; role?: string }) {
+  await getSession();
+  const db = createServerClient();
+  await db.from('members').update(updates).eq('id', memberId);
+  revalidatePath('/settings');
+  revalidatePath('/profile/' + memberId);
+}
+
+export async function getCurrentMember() {
+  const session = await getSession();
+  const db = createServerClient();
+  const base = await getMemberFamily(session.user.id);
+  if (!base) return null;
+  const { data } = await db.from('members').select('*').eq('id', base.id).single();
+  return data;
 }
 
 // ── Members ───────────────────────────────────────────────────────────────

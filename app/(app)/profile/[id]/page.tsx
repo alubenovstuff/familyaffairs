@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { T, BADGE_TIERS } from '@/lib/tokens';
-import { MEMBERS, BADGES, LEDGER } from '@/lib/mock-data';
+import { getMember, getBadges, getLedger } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
 import { ToggleTabs, BadgeCard, StreakChip, Confetti } from '@/components/ui';
+
+type Member = NonNullable<Awaited<ReturnType<typeof getMember>>>;
+type BadgeRow = Awaited<ReturnType<typeof getBadges>>['badges'][number];
+type EarnedRow = Awaited<ReturnType<typeof getBadges>>['earned'][number];
+type LedgerRow = Awaited<ReturnType<typeof getLedger>>[number];
 
 const TASK_TYPE_BREAKDOWN = [
   { label: 'Домашно', color: T.household, count: 24, total: 30 },
@@ -13,18 +18,31 @@ const TASK_TYPE_BREAKDOWN = [
   { label: 'Ежедневно', color: T.ongoing, count: 28, total: 30 },
 ];
 
-const STREAK_DAYS = [true, true, false, true, true, true, true]; // Mon–Sun
+const STREAK_DAYS = [true, true, false, true, true, true, true];
+
+function ledgerIcon(type: string) {
+  if (type === 'earned') return '⭐';
+  if (type === 'spent') return '🎁';
+  return '✨';
+}
+function ledgerColor(type: string) {
+  if (type === 'earned') return T.challenge;
+  if (type === 'spent') return T.mustDo;
+  return T.ongoing;
+}
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' });
+}
 
 // ── Shared: Member avatar + header info ──────────────────────────────────
 
-function HeroHeader({ memberIdx }: { memberIdx: number }) {
-  const m = MEMBERS[memberIdx];
-  const levelPct = Math.min((m.pointsTotalEarned % 500) / 500, 1);
-  const level = Math.floor(m.pointsTotalEarned / 500) + 1;
+function HeroHeader({ member }: { member: Member }) {
+  const levelPct = Math.min(((member.points_total_earned ?? 0) % 500) / 500, 1);
+  const level = Math.floor((member.points_total_earned ?? 0) / 500) + 1;
 
   return (
     <div style={{
-      background: `linear-gradient(160deg, ${m.color} 0%, ${T.mustDo} 100%)`,
+      background: `linear-gradient(160deg, ${member.color} 0%, ${T.mustDo} 100%)`,
       padding: '24px 20px 20px', flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
@@ -33,49 +51,47 @@ function HeroHeader({ memberIdx }: { memberIdx: number }) {
           border: '3px solid rgba(255,255,255,0.8)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 28, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0,
-        }}>{m.init}</div>
+        }}>{member.init}</div>
         <div style={{ flex: 1, paddingTop: 4 }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>{m.name}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>{member.name}</div>
           <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-            <span style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 10, fontWeight: 700, textTransform: 'capitalize' }}>{m.role}</span>
+            <span style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 10, fontWeight: 700, textTransform: 'capitalize' }}>{member.role}</span>
             <span style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 99, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>Ниво {level}</span>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>⭐ {m.pointsBalance}</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', fontFamily: 'Nunito, sans-serif' }}>⭐ {member.points_balance ?? 0}</div>
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>баланс</div>
         </div>
       </div>
-      {/* Level bar */}
       <div style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Ниво {level}</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>{m.pointsTotalEarned % 500}/{500} т.</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>{(member.points_total_earned ?? 0) % 500}/{500} т.</span>
         </div>
         <div style={{ height: 6, background: 'rgba(255,255,255,0.25)', borderRadius: 99 }}>
           <div style={{ height: '100%', width: `${levelPct * 100}%`, background: '#fff', borderRadius: 99, transition: 'width 0.5s' }} />
         </div>
       </div>
-      <StreakChip days={m.currentStreak} />
+      <StreakChip days={member.current_streak ?? 0} />
     </div>
   );
 }
 
 // ── Variant A — Own Profile ───────────────────────────────────────────────
 
-function OwnProfile({ memberIdx }: { memberIdx: number }) {
+function OwnProfile({ member, badges, earned, ledger }: { member: Member; badges: BadgeRow[]; earned: EarnedRow[]; ledger: LedgerRow[] }) {
   const [tab, setTab] = useState(0);
   const [tierFilter, setTierFilter] = useState<string | null>(null);
 
   const filteredBadges = tierFilter
-    ? BADGES.filter(b => b.tier === tierFilter)
-    : BADGES;
+    ? badges.filter(b => b.tier === tierFilter)
+    : badges;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <HeroHeader memberIdx={memberIdx} />
+      <HeroHeader member={member} />
 
-      {/* Tabs */}
       <div style={{ background: '#fff', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <div style={{ display: 'flex' }}>
           {['Значки', 'Точки', 'Задачи'].map((t, i) => (
@@ -90,7 +106,6 @@ function OwnProfile({ memberIdx }: { memberIdx: number }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {/* Badges tab */}
         {tab === 0 && (
           <div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -107,36 +122,43 @@ function OwnProfile({ memberIdx }: { memberIdx: number }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, justifyItems: 'center' }}>
               {filteredBadges.map(b => (
-                <BadgeCard key={b.id} icon={b.icon} name={b.name} tier={b.tier} earned={b.earned} progress={b.progress} maxProgress={b.maxProgress} />
+                <BadgeCard
+                  key={b.id}
+                  icon={b.emoji ?? '🏅'}
+                  name={b.title}
+                  tier={b.tier as keyof typeof BADGE_TIERS}
+                  earned={earned.some(e => e.badge_id === b.id)}
+                />
               ))}
             </div>
           </div>
         )}
 
-        {/* Ledger tab */}
         {tab === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
-              {LEDGER.map((entry, i) => (
+              {ledger.map((entry, i) => (
                 <div key={entry.id} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  borderBottom: i < LEDGER.length - 1 ? `1px solid ${T.border}` : 'none',
+                  borderBottom: i < ledger.length - 1 ? `1px solid ${T.border}` : 'none',
                 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${entry.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{entry.icon}</div>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${ledgerColor(entry.type)}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{ledgerIcon(entry.type)}</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{entry.label}</div>
-                    <div style={{ fontSize: 11, color: T.text3 }}>{entry.date}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{entry.description ?? ''}</div>
+                    <div style={{ fontSize: 11, color: T.text3 }}>{entry.created_at ? formatDate(entry.created_at) : ''}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Nunito, sans-serif', color: entry.delta > 0 ? '#2d9e5f' : T.mustDo }}>
-                    {entry.delta > 0 ? '+' : ''}{entry.delta}
+                  <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Nunito, sans-serif', color: (entry.amount ?? 0) > 0 ? '#2d9e5f' : T.mustDo }}>
+                    {(entry.amount ?? 0) > 0 ? '+' : ''}{entry.amount ?? 0}
                   </div>
                 </div>
               ))}
+              {ledger.length === 0 && (
+                <div style={{ padding: '24px', textAlign: 'center', color: T.text3, fontSize: 13 }}>Няма записи</div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Tasks tab */}
         {tab === 2 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Streak тази седмица</div>
@@ -174,8 +196,7 @@ function OwnProfile({ memberIdx }: { memberIdx: number }) {
 
 // ── Variant B — Parent View ───────────────────────────────────────────────
 
-function ParentView({ memberIdx }: { memberIdx: number }) {
-  const m = MEMBERS[memberIdx];
+function ParentView({ member, badges, earned, ledger }: { member: Member; badges: BadgeRow[]; earned: EarnedRow[]; ledger: LedgerRow[] }) {
   const [bonusOpen, setBonusOpen] = useState(false);
   const [bonusAmt, setBonusAmt] = useState(20);
   const [bonusNote, setBonusNote] = useState('');
@@ -193,60 +214,58 @@ function ParentView({ memberIdx }: { memberIdx: number }) {
       {showConfetti && <Confetti />}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-        {/* Profile card */}
         <div style={{ background: '#fff', borderRadius: 16, border: `1px solid ${T.border}`, padding: '16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{m.init}</div>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: member.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{member.init}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: T.text, fontFamily: 'Nunito, sans-serif' }}>{m.name}</div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: T.text3, textTransform: 'capitalize', background: T.surf2, borderRadius: 99, padding: '2px 8px' }}>{m.role}</span>
+            <div style={{ fontSize: 18, fontWeight: 900, color: T.text, fontFamily: 'Nunito, sans-serif' }}>{member.name}</div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.text3, textTransform: 'capitalize', background: T.surf2, borderRadius: 99, padding: '2px 8px' }}>{member.role}</span>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>⭐ {m.pointsBalance}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: T.challenge, fontFamily: 'Nunito, sans-serif' }}>⭐ {member.points_balance ?? 0}</div>
             <div style={{ fontSize: 10, color: T.text3 }}>баланс</div>
-            <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>{m.pointsTotalEarned} общо</div>
+            <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>{member.points_total_earned ?? 0} общо</div>
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <StreakChip days={m.currentStreak} />
+          <StreakChip days={member.current_streak ?? 0} />
         </div>
 
-        {/* Badges scroll */}
         <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Значки</div>
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, marginBottom: 16 }}>
-          {BADGES.slice(0, 6).map(b => (
+          {badges.slice(0, 6).map(b => (
             <div key={b.id} style={{ flexShrink: 0 }}>
-              <BadgeCard icon={b.icon} name={b.name} tier={b.tier} earned={b.earned} size="sm" />
+              <BadgeCard icon={b.emoji ?? '🏅'} name={b.title} tier={b.tier as keyof typeof BADGE_TIERS} earned={earned.some(e => e.badge_id === b.id)} size="sm" />
             </div>
           ))}
         </div>
 
-        {/* Quick ledger */}
         <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Последни точки</div>
         <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: 16 }}>
-          {LEDGER.slice(0, 4).map((entry, i) => (
-            <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < 3 ? `1px solid ${T.border}` : 'none' }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${entry.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>{entry.icon}</div>
+          {ledger.slice(0, 4).map((entry, i) => (
+            <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < Math.min(ledger.length, 4) - 1 ? `1px solid ${T.border}` : 'none' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${ledgerColor(entry.type)}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>{ledgerIcon(entry.type)}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: T.text }}>{entry.label}</div>
-                <div style={{ fontSize: 10, color: T.text3 }}>{entry.date}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: T.text }}>{entry.description ?? ''}</div>
+                <div style={{ fontSize: 10, color: T.text3 }}>{entry.created_at ? formatDate(entry.created_at) : ''}</div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Nunito, sans-serif', color: entry.delta > 0 ? '#2d9e5f' : T.mustDo }}>{entry.delta > 0 ? '+' : ''}{entry.delta}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Nunito, sans-serif', color: (entry.amount ?? 0) > 0 ? '#2d9e5f' : T.mustDo }}>{(entry.amount ?? 0) > 0 ? '+' : ''}{entry.amount ?? 0}</div>
             </div>
           ))}
+          {ledger.length === 0 && (
+            <div style={{ padding: '16px', textAlign: 'center', color: T.text3, fontSize: 12 }}>Няма записи</div>
+          )}
         </div>
 
-        {/* Bonus button */}
         <div onClick={() => setBonusOpen(true)} style={{
           background: T.challenge, borderRadius: 12, padding: '13px', textAlign: 'center',
           cursor: 'pointer', boxShadow: `0 4px 16px ${T.challenge}40`,
         }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>⭐ Добави бонус за {m.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>⭐ Добави бонус за {member.name}</span>
         </div>
         <div style={{ height: 16 }} />
       </div>
 
-      {/* Bonus bottom sheet */}
       {bonusOpen && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
           <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: 20 }}>
@@ -254,12 +273,12 @@ function ParentView({ memberIdx }: { memberIdx: number }) {
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>Бонусът е изпратен!</div>
-                <div style={{ fontSize: 13, color: T.text2, marginTop: 6 }}>+{bonusAmt} т. за {m.name}</div>
+                <div style={{ fontSize: 13, color: T.text2, marginTop: 6 }}>+{bonusAmt} т. за {member.name}</div>
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>⭐ Бонус за {m.name}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>⭐ Бонус за {member.name}</div>
                   <div onClick={() => setBonusOpen(false)} style={{ fontSize: 20, color: T.text3, cursor: 'pointer' }}>✕</div>
                 </div>
                 <div style={{ marginBottom: 14 }}>
@@ -297,8 +316,25 @@ function ParentView({ memberIdx }: { memberIdx: number }) {
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const memberIdx = Math.max(0, MEMBERS.findIndex(m => m.id === id));
   const [variant, setVariant] = useState(0);
+  const [member, setMember] = useState<Member | null>(null);
+  const [badges, setBadges] = useState<BadgeRow[]>([]);
+  const [earned, setEarned] = useState<EarnedRow[]>([]);
+  const [ledger, setLedger] = useState<LedgerRow[]>([]);
+
+  useEffect(() => {
+    getMember(id).then(m => { if (m) setMember(m); });
+    getBadges().then(({ badges: b, earned: e }) => { setBadges(b); setEarned(e); });
+    getLedger(id).then(setLedger);
+  }, [id]);
+
+  if (!member) {
+    return (
+      <MobileShell>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: T.text3, fontSize: 14 }}>Зареждане...</div>
+      </MobileShell>
+    );
+  }
 
   return (
     <MobileShell>
@@ -307,7 +343,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           <ToggleTabs options={['Мой профил', 'Родителски']} active={variant} onChange={setVariant} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {variant === 0 ? <OwnProfile memberIdx={memberIdx} /> : <ParentView memberIdx={memberIdx} />}
+          {variant === 0
+            ? <OwnProfile member={member} badges={badges} earned={earned} ledger={ledger} />
+            : <ParentView member={member} badges={badges} earned={earned} ledger={ledger} />
+          }
         </div>
         <BottomNav activeIdx={3} />
       </div>

@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { T } from '@/lib/tokens';
-import { MEMBERS } from '@/lib/mock-data';
+import { getMembers, getFamily, getCurrentMember, updateFamily, updateMember } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
-import { ToggleTabs, Avatar } from '@/components/ui';
+import { ToggleTabs } from '@/components/ui';
+
+type Member = Awaited<ReturnType<typeof getMembers>>[number];
+type Family = Awaited<ReturnType<typeof getFamily>>;
+type CurrMember = Awaited<ReturnType<typeof getCurrentMember>>;
 
 // ── Toggle row ────────────────────────────────────────────────────────────
 
@@ -40,28 +44,60 @@ function Row({ children, last = false }: { children: React.ReactNode; last?: boo
 
 // ── Variant A — Parent settings ───────────────────────────────────────────
 
-function ParentSettings() {
-  const [avatarColor, setAvatarColor] = useState<string>(T.avatars[0]);
-  const [dailyBase, setDailyBase] = useState(10);
-  const [autoApprove, setAutoApprove] = useState<string>('Off');
+function ParentSettings({ members, family, currentMember, onRefresh }: { members: Member[]; family: Family; currentMember: CurrMember; onRefresh: () => void }) {
+  const [avatarColor, setAvatarColor] = useState<string>(currentMember?.color ?? T.avatars[0]);
+  const [dailyBase, setDailyBase] = useState(family?.daily_base_pts ?? 10);
+  const [autoApprove, setAutoApprove] = useState<string>(family?.auto_approve ?? 'Off');
   const [streakExpanded, setStreakExpanded] = useState(false);
   const [notifs, setNotifs] = useState({ approvals: true, badges: true, bonuses: true, deadlines: false });
-  const [memberExpanded, setMemberExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (family) {
+      setDailyBase(family.daily_base_pts ?? 10);
+      setAutoApprove(family.auto_approve ?? 'Off');
+    }
+  }, [family]);
+
+  useEffect(() => {
+    if (currentMember) setAvatarColor(currentMember.color ?? T.avatars[0]);
+  }, [currentMember]);
 
   const toggleNotif = (k: keyof typeof notifs) =>
     setNotifs(n => ({ ...n, [k]: !n[k] }));
+
+  const handleSaveFamily = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateFamily({ daily_base_pts: dailyBase, auto_approve: autoApprove });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleColorChange = async (color: string) => {
+    setAvatarColor(color);
+    if (currentMember?.id) {
+      await updateMember(currentMember.id, { color });
+      onRefresh();
+    }
+  };
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
       {/* Profile card */}
       <div style={{ background: '#fff', borderRadius: 16, border: `1px solid ${T.border}`, padding: '16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>М</div>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{currentMember?.init ?? '?'}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>Мама</div>
-          <div style={{ fontSize: 11, color: T.text3, marginBottom: 6 }}>mama@family.bg</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>{currentMember?.name ?? 'Родител'}</div>
+          <div style={{ fontSize: 11, color: T.text3, textTransform: 'capitalize', marginBottom: 6 }}>{currentMember?.role ?? 'parent'}</div>
           <div style={{ display: 'flex', gap: 6 }}>
             {T.avatars.slice(0, 6).map((c, i) => (
-              <div key={i} onClick={() => setAvatarColor(c)} style={{
+              <div key={i} onClick={() => handleColorChange(c)} style={{
                 width: 20, height: 20, borderRadius: '50%', background: c, cursor: 'pointer',
                 border: `2px solid ${avatarColor === c ? '#fff' : 'transparent'}`,
                 boxShadow: avatarColor === c ? `0 0 0 2px ${c}` : 'none',
@@ -70,7 +106,6 @@ function ParentSettings() {
             ))}
           </div>
         </div>
-        <div style={{ fontSize: 12, color: T.ongoing, fontWeight: 600, cursor: 'pointer' }}>Редактирай</div>
       </div>
 
       {/* Family section */}
@@ -110,7 +145,7 @@ function ParentSettings() {
             </div>
           </div>
         </Row>
-        <Row last>
+        <Row>
           <div onClick={() => setStreakExpanded(!streakExpanded)} style={{ padding: '12px 0', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, color: T.text }}>🔥 Streak мултипликатори</span>
             <span style={{ fontSize: 12, color: T.text3 }}>{streakExpanded ? '▲' : '▼'}</span>
@@ -126,25 +161,31 @@ function ParentSettings() {
             </div>
           )}
         </Row>
+        <Row last>
+          <div onClick={handleSaveFamily} style={{ padding: '12px 0', textAlign: 'center', cursor: saving ? 'not-allowed' : 'pointer' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: saved ? T.household : T.mustDo }}>{saving ? 'Запазване...' : saved ? '✓ Запазено' : 'Запази настройките'}</span>
+          </div>
+        </Row>
       </SectionCard>
 
       {/* Members section */}
       <SectionCard title="Членове">
-        {MEMBERS.map((m, i) => (
-          <Row key={m.id} last={i === MEMBERS.length - 1}>
+        {members.map((m, i) => (
+          <Row key={m.id} last={i === members.length - 1}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{m.init}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{m.name}</div>
                 <div style={{ fontSize: 10, color: T.text3, textTransform: 'capitalize' }}>{m.role}</div>
               </div>
-              <div style={{ fontSize: 12, color: T.ongoing, fontWeight: 600, cursor: 'pointer' }}>Редактирай</div>
             </div>
           </Row>
         ))}
-        <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}`, cursor: 'pointer' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: T.mustDo }}>＋ Покани нов член</span>
-        </div>
+        {members.length === 0 && (
+          <Row last>
+            <div style={{ padding: '12px 0', color: T.text3, fontSize: 13 }}>Зареждане...</div>
+          </Row>
+        )}
       </SectionCard>
 
       {/* Notifications */}
@@ -178,30 +219,41 @@ function ParentSettings() {
 
 // ── Variant B — Teen/Child settings ──────────────────────────────────────
 
-function ChildSettings() {
-  const [avatarColor, setAvatarColor] = useState<string>(T.avatars[2]);
+function ChildSettings({ currentMember, onRefresh }: { currentMember: CurrMember; onRefresh: () => void }) {
+  const [avatarColor, setAvatarColor] = useState<string>(currentMember?.color ?? T.avatars[2]);
   const [notifs, setNotifs] = useState({ approvals: true, badges: true, bonuses: true, deadlines: false });
+
+  useEffect(() => {
+    if (currentMember) setAvatarColor(currentMember.color ?? T.avatars[2]);
+  }, [currentMember]);
 
   const toggleNotif = (k: keyof typeof notifs) =>
     setNotifs(n => ({ ...n, [k]: !n[k] }));
 
+  const handleColorChange = async (color: string) => {
+    setAvatarColor(color);
+    if (currentMember?.id) {
+      await updateMember(currentMember.id, { color });
+      onRefresh();
+    }
+  };
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-      {/* Profile */}
       <SectionCard title="Профил">
         <Row last>
           <div style={{ padding: '12px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>Е</div>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{currentMember?.init ?? '?'}</div>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>Елена</div>
-                <div style={{ fontSize: 11, color: T.text3 }}>Дете · 8 г.</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>{currentMember?.name ?? 'Дете'}</div>
+                <div style={{ fontSize: 11, color: T.text3, textTransform: 'capitalize' }}>{currentMember?.role ?? 'child'}</div>
               </div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 600, color: T.text, marginBottom: 8 }}>🎨 Цвят на аватара</div>
             <div style={{ display: 'flex', gap: 10 }}>
               {T.avatars.map((c, i) => (
-                <div key={i} onClick={() => setAvatarColor(c)} style={{
+                <div key={i} onClick={() => handleColorChange(c)} style={{
                   width: 34, height: 34, borderRadius: '50%', background: c, cursor: 'pointer',
                   border: `3px solid ${avatarColor === c ? '#fff' : 'transparent'}`,
                   boxShadow: avatarColor === c ? `0 0 0 2px ${c}` : 'none',
@@ -213,7 +265,6 @@ function ChildSettings() {
         </Row>
       </SectionCard>
 
-      {/* Notifications */}
       <SectionCard title="Известия">
         {(Object.keys(notifs) as Array<keyof typeof notifs>).map((k, i, arr) => (
           <Row key={k} last={i === arr.length - 1}>
@@ -222,7 +273,6 @@ function ChildSettings() {
         ))}
       </SectionCard>
 
-      {/* Locked section */}
       <SectionCard title="Семейни настройки">
         <Row last>
           <div style={{ padding: '14px 0', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -244,6 +294,17 @@ function ChildSettings() {
 
 export default function SettingsPage() {
   const [variant, setVariant] = useState(0);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [family, setFamily] = useState<Family>(null);
+  const [currentMember, setCurrentMember] = useState<CurrMember>(null);
+
+  const loadData = () => {
+    getMembers().then(setMembers);
+    getFamily().then(setFamily);
+    getCurrentMember().then(setCurrentMember);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   return (
     <MobileShell>
@@ -253,7 +314,10 @@ export default function SettingsPage() {
           <ToggleTabs options={['Родител', 'Дете']} active={variant} onChange={setVariant} />
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {variant === 0 ? <ParentSettings /> : <ChildSettings />}
+          {variant === 0
+            ? <ParentSettings members={members} family={family} currentMember={currentMember} onRefresh={loadData} />
+            : <ChildSettings currentMember={currentMember} onRefresh={loadData} />
+          }
         </div>
         <BottomNav activeIdx={3} />
       </div>

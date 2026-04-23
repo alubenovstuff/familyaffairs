@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { T, TASK_TYPES } from '@/lib/tokens';
-import { MEMBERS } from '@/lib/mock-data';
+import { getMembers, createTask } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
-import { ToggleTabs, Btn, Input, Confetti } from '@/components/ui';
+import { ToggleTabs, Input, Confetti } from '@/components/ui';
+
+type Member = Awaited<ReturnType<typeof getMembers>>[number];
 
 const TYPE_KEYS = Object.keys(TASK_TYPES) as (keyof typeof TASK_TYPES)[];
 const TYPE_ICONS: Record<string, string> = {
@@ -25,7 +27,7 @@ const REWARD_OPTS = [
 
 // ── Wizard (Step-by-step) ─────────────────────────────────────────────────
 
-const WizardVariant = () => {
+const WizardVariant = ({ members }: { members: Member[] }) => {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [entityType, setEntityType] = useState<'task' | 'event'>('task');
@@ -35,13 +37,34 @@ const WizardVariant = () => {
   const [duration, setDuration] = useState(30);
   const [pts, setPts] = useState(15);
   const [recurrence, setRecurrence] = useState('Без повторение');
-  const [assignees, setAssignees] = useState<number[]>([]);
+  const [assignees, setAssignees] = useState<string[]>([]);
   const [splitType, setSplitType] = useState('equal');
   const [rewardType, setRewardType] = useState('none');
+  const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  const toggleAssignee = (i: number) =>
-    setAssignees(a => a.includes(i) ? a.filter(x => x !== i) : [...a, i]);
+  const toggleAssignee = (id: string) =>
+    setAssignees(a => a.includes(id) ? a.filter(x => x !== id) : [...a, id]);
+
+  const handleCreate = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await createTask({
+        title,
+        type: taskType,
+        pts,
+        due: null,
+        description: desc || null,
+        reward: rewardType,
+        reward_label: null,
+        assignee_ids: assignees,
+      });
+      setDone(true);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (done) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', position: 'relative', background: T.bg }}>
@@ -162,10 +185,10 @@ const WizardVariant = () => {
             <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif', marginBottom: 4 }}>Изпълнители</div>
             <div style={{ fontSize: 13, color: T.text2, marginBottom: 16 }}>Избери кой изпълнява задачата.</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-              {MEMBERS.map((m, i) => {
-                const active = assignees.includes(i);
+              {members.map(m => {
+                const active = assignees.includes(m.id);
                 return (
-                  <div key={m.id} onClick={() => toggleAssignee(i)} style={{
+                  <div key={m.id} onClick={() => toggleAssignee(m.id)} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
                     borderRadius: 12, cursor: 'pointer',
                     background: active ? `${m.color}12` : '#fff',
@@ -249,8 +272,8 @@ const WizardVariant = () => {
             <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Напред →</span>
           </div>
         ) : (
-          <div onClick={() => setDone(true)} style={{ background: T.household, borderRadius: 12, padding: 14, textAlign: 'center', cursor: 'pointer', boxShadow: `0 4px 16px ${T.household}40` }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>✓ Създай задача</span>
+          <div onClick={handleCreate} style={{ background: saving ? T.border : T.household, borderRadius: 12, padding: 14, textAlign: 'center', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : `0 4px 16px ${T.household}40` }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{saving ? 'Запазване...' : '✓ Създай задача'}</span>
           </div>
         )}
       </div>
@@ -260,31 +283,52 @@ const WizardVariant = () => {
 
 // ── Single Scroll variant ─────────────────────────────────────────────────
 
-const ScrollVariant = () => {
+const ScrollVariant = ({ members }: { members: Member[] }) => {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [taskType, setTaskType] = useState<string>('household');
   const [duration, setDuration] = useState(30);
   const [pts, setPts] = useState(15);
-  const [assignees, setAssignees] = useState<number[]>([]);
+  const [assignees, setAssignees] = useState<string[]>([]);
   const [recurrence, setRecurrence] = useState('Без повторение');
   const [rewardType, setRewardType] = useState('none');
+  const [saving, setSaving] = useState(false);
 
   const tp = TASK_TYPES[taskType as keyof typeof TASK_TYPES] || TASK_TYPES.household;
-  const toggleAssignee = (i: number) =>
-    setAssignees(a => a.includes(i) ? a.filter(x => x !== i) : [...a, i]);
+  const toggleAssignee = (id: string) =>
+    setAssignees(a => a.includes(id) ? a.filter(x => x !== id) : [...a, id]);
+
+  const handleSave = async () => {
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    try {
+      await createTask({
+        title,
+        type: taskType,
+        pts,
+        due: null,
+        description: desc || null,
+        reward: rewardType,
+        reward_label: null,
+        assignee_ids: assignees,
+      });
+      router.push('/tasks');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, overflow: 'hidden' }}>
       <div style={{ background: '#fff', borderBottom: `1px solid ${T.border}`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div onClick={() => router.back()} style={{ fontSize: 20, color: T.text2, cursor: 'pointer' }}>‹</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: 'Nunito, sans-serif' }}>Нова задача</div>
-        <div onClick={title.trim() ? () => router.push('/tasks') : undefined} style={{
-          background: title.trim() ? T.mustDo : T.border,
+        <div onClick={handleSave} style={{
+          background: title.trim() && !saving ? T.mustDo : T.border,
           borderRadius: 99, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff',
-          cursor: title.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
-        }}>Запази</div>
+          cursor: title.trim() && !saving ? 'pointer' : 'not-allowed', transition: 'all 0.15s',
+        }}>{saving ? '...' : 'Запази'}</div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
@@ -347,10 +391,10 @@ const ScrollVariant = () => {
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 8 }}>Изпълнители</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {MEMBERS.map((m, i) => {
-              const active = assignees.includes(i);
+            {members.map(m => {
+              const active = assignees.includes(m.id);
               return (
-                <div key={m.id} onClick={() => toggleAssignee(i)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                <div key={m.id} onClick={() => toggleAssignee(m.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'Nunito, sans-serif', border: `3px solid ${active ? '#fff' : 'transparent'}`, boxShadow: active ? `0 0 0 2px ${m.color}` : 'none', transition: 'all 0.12s' }}>{m.init}</div>
                   <span style={{ fontSize: 9, color: active ? m.color : T.text3, fontWeight: active ? 700 : 400 }}>{m.name.split(' ')[0]}</span>
                 </div>
@@ -391,6 +435,11 @@ const ScrollVariant = () => {
 
 export default function NewTaskPage() {
   const [variant, setVariant] = useState(0);
+  const [members, setMembers] = useState<Member[]>([]);
+
+  useEffect(() => {
+    getMembers().then(setMembers);
+  }, []);
 
   return (
     <MobileShell>
@@ -399,7 +448,7 @@ export default function NewTaskPage() {
           <ToggleTabs options={['Стъпки', 'Скрол']} active={variant} onChange={setVariant} />
         </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          {variant === 0 ? <WizardVariant /> : <ScrollVariant />}
+          {variant === 0 ? <WizardVariant members={members} /> : <ScrollVariant members={members} />}
         </div>
         <BottomNav activeIdx={1} />
       </div>
