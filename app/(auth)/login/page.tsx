@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { T } from '@/lib/tokens';
 import { Input, Btn, Confetti } from '@/components/ui';
 import { MobileShell } from '@/components/layout/Shell';
+import { registerUser } from '@/lib/actions';
 
 type Mode = 'login' | 'register' | 'forgot';
 
@@ -13,30 +16,52 @@ const CHILD_PROFILES = [
 ];
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setError('');
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      if (mode === 'register') {
+        await registerUser(email, password, name);
+        const res = await signIn('credentials', { email, password, redirect: false });
+        if (res?.error) { setError('Регистрацията не успя. Опитайте отново.'); return; }
+        setDone(true);
+      } else if (mode === 'login') {
+        const res = await signIn('credentials', { email, password, redirect: false });
+        if (res?.error) { setError('Грешен имейл или парола.'); return; }
+        setDone(true);
+      } else {
+        // forgot password via Supabase
+        const { createClient } = await import('@supabase/supabase-js');
+        const sb = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        );
+        await sb.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` });
+        setForgotSent(true);
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Нещо се обърка.');
+    } finally {
       setLoading(false);
-      setDone(true);
-    }, 1400);
+    }
   };
 
   const handleChildLogin = (_childName: string) => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setDone(true);
-    }, 900);
+    // child PIN flow — placeholder until child accounts are wired up
+    setDone(true);
   };
 
-  // ── Success state ──────────────────────────────────────────────────────────
   if (done) {
     return (
       <MobileShell>
@@ -63,7 +88,7 @@ export default function LoginPage() {
             Влизаш в семейния организатор
           </div>
           <div
-            onClick={() => window.location.href = '/home'}
+            onClick={() => router.push('/home')}
             style={{
               background: T.mustDo, color: '#fff',
               borderRadius: 16, padding: '16px 0',
@@ -94,27 +119,10 @@ export default function LoginPage() {
           position: 'relative', overflow: 'hidden',
           flexShrink: 0,
         }}>
-          {/* decorative blobs */}
-          <div style={{
-            position: 'absolute', top: -50, right: -50,
-            width: 160, height: 160, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.10)',
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: -30, left: -30,
-            width: 110, height: 110, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.07)',
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', top: 20, left: '15%',
-            width: 60, height: 60, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.05)',
-            pointerEvents: 'none',
-          }} />
+          <div style={{ position: 'absolute', top: -50, right: -50, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.10)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -30, left: -30, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: 20, left: '15%', width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
 
-          {/* Floating logo */}
           <div className="animate-float" style={{
             width: 76, height: 76, borderRadius: 24,
             background: 'rgba(255,255,255,0.24)',
@@ -127,56 +135,35 @@ export default function LoginPage() {
             🏠
           </div>
 
-          <div style={{
-            fontFamily: 'Nunito, sans-serif', fontSize: 30, fontWeight: 900,
-            color: '#fff', letterSpacing: '-0.02em', marginBottom: 6,
-            textShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          }}>
+          <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 6, textShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
             FamilyAffairs
           </div>
-          <div style={{
-            fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 400,
-            color: 'rgba(255,255,255,0.88)',
-            letterSpacing: '0.01em',
-          }}>
+          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.01em' }}>
             Семейният ви организатор
           </div>
         </div>
 
         {/* ── Content card ── */}
         <div style={{
-          flex: 1,
-          background: T.surface,
-          borderRadius: '24px 24px 0 0',
-          marginTop: -16,
-          padding: '28px 24px 40px',
-          display: 'flex',
-          flexDirection: 'column',
+          flex: 1, background: T.surface, borderRadius: '24px 24px 0 0',
+          marginTop: -16, padding: '28px 24px 40px',
+          display: 'flex', flexDirection: 'column',
           boxShadow: '0 -2px 16px rgba(0,0,0,0.06)',
         }}>
 
           {/* Tab toggle */}
           {mode !== 'forgot' && (
-            <div style={{
-              display: 'flex', background: T.surf2,
-              borderRadius: 14, padding: 4, marginBottom: 26, gap: 2,
-            }}>
+            <div style={{ display: 'flex', background: T.surf2, borderRadius: 14, padding: 4, marginBottom: 26, gap: 2 }}>
               {(['login', 'register'] as Mode[]).map((m) => (
-                <div
-                  key={m}
-                  onClick={() => setMode(m)}
-                  style={{
-                    flex: 1, textAlign: 'center',
-                    padding: '10px 0', borderRadius: 11,
-                    background: mode === m ? T.surface : 'transparent',
-                    color: mode === m ? T.text : T.text2,
-                    fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 14, fontWeight: mode === m ? 700 : 500,
-                    cursor: 'pointer',
-                    boxShadow: mode === m ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
-                    transition: 'all 0.18s',
-                  }}
-                >
+                <div key={m} onClick={() => { setMode(m); setError(''); }} style={{
+                  flex: 1, textAlign: 'center', padding: '10px 0', borderRadius: 11,
+                  background: mode === m ? T.surface : 'transparent',
+                  color: mode === m ? T.text : T.text2,
+                  fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: mode === m ? 700 : 500,
+                  cursor: 'pointer',
+                  boxShadow: mode === m ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.18s',
+                }}>
                   {m === 'login' ? 'Вход' : 'Регистрация'}
                 </div>
               ))}
@@ -186,71 +173,54 @@ export default function LoginPage() {
           {/* Forgot password header */}
           {mode === 'forgot' && (
             <div className="animate-fade-up" style={{ marginBottom: 26 }}>
-              <div
-                onClick={() => setMode('login')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  color: T.text2, fontSize: 13, fontFamily: 'DM Sans, sans-serif',
-                  cursor: 'pointer', marginBottom: 18, fontWeight: 500,
-                }}
-              >
+              <div onClick={() => { setMode('login'); setForgotSent(false); setError(''); }} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                color: T.text2, fontSize: 13, fontFamily: 'DM Sans, sans-serif',
+                cursor: 'pointer', marginBottom: 18, fontWeight: 500,
+              }}>
                 ← Назад
               </div>
-              <div style={{
-                fontFamily: 'Nunito, sans-serif', fontSize: 22, fontWeight: 800,
-                color: T.text, marginBottom: 6,
-              }}>
+              <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 6 }}>
                 Забравена парола
               </div>
-              <div style={{
-                fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: T.text2, lineHeight: 1.5,
-              }}>
+              <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: T.text2, lineHeight: 1.5 }}>
                 Въведете имейла си и ще ви изпратим линк за смяна на паролата.
               </div>
+            </div>
+          )}
+
+          {/* Forgot sent confirmation */}
+          {forgotSent && (
+            <div style={{ background: `${T.household}15`, border: `1px solid ${T.household}40`, borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: T.household }}>
+              ✓ Изпратихме линк за смяна на паролата на {email}.
             </div>
           )}
 
           {/* Form fields */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {mode === 'register' && (
-              <Input
-                label="Вашето име"
-                placeholder="Иван Иванов"
-                value={name}
-                onChange={setName}
-              />
+              <Input label="Вашето име" placeholder="Иван Иванов" value={name} onChange={setName} />
             )}
-            <Input
-              label="Имейл адрес"
-              placeholder="email@example.com"
-              type="email"
-              value={email}
-              onChange={setEmail}
-            />
+            <Input label="Имейл адрес" placeholder="email@example.com" type="email" value={email} onChange={setEmail} />
             {mode !== 'forgot' && (
-              <Input
-                label="Парола"
-                placeholder="••••••••"
-                type="password"
-                value={password}
-                onChange={setPassword}
-              />
+              <Input label="Парола" placeholder="••••••••" type="password" value={password} onChange={setPassword} />
             )}
           </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{ marginTop: 12, background: `${T.mustDo}12`, border: `1px solid ${T.mustDo}40`, borderRadius: 10, padding: '10px 14px', fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: T.mustDo }}>
+              {error}
+            </div>
+          )}
 
           {/* Forgot password link */}
           {mode === 'login' && (
             <div style={{ textAlign: 'right', marginTop: 10, marginBottom: 2 }}>
-              <span
-                onClick={() => setMode('forgot')}
-                style={{
-                  fontSize: 12, color: T.mustDo,
-                  fontFamily: 'DM Sans, sans-serif',
-                  cursor: 'pointer', fontWeight: 600,
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 2,
-                }}
-              >
+              <span onClick={() => { setMode('forgot'); setError(''); }} style={{
+                fontSize: 12, color: T.mustDo, fontFamily: 'DM Sans, sans-serif',
+                cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2,
+              }}>
                 Забравена парола?
               </span>
             </div>
@@ -258,83 +228,54 @@ export default function LoginPage() {
 
           {/* Primary CTA */}
           <div
-            onClick={!loading ? handleSubmit : undefined}
+            onClick={!loading && !forgotSent ? handleSubmit : undefined}
             style={{
               background: loading ? `${T.mustDo}bb` : T.mustDo,
-              color: '#fff',
-              borderRadius: 14, padding: '15px 0',
+              color: '#fff', borderRadius: 14, padding: '15px 0',
               textAlign: 'center', width: '100%',
-              fontSize: 15, fontWeight: 700,
-              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 15, fontWeight: 700, fontFamily: 'DM Sans, sans-serif',
               cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: loading ? 'none' : `0 6px 20px ${T.mustDo}45`,
-              transition: 'all 0.18s',
-              marginTop: 22,
-              letterSpacing: '0.01em',
+              transition: 'all 0.18s', marginTop: 22, letterSpacing: '0.01em',
             }}
           >
-            {loading
-              ? '...'
-              : mode === 'login'
-                ? 'Влез в профила'
-                : mode === 'register'
-                  ? 'Създай профил'
-                  : 'Изпрати линк за смяна'}
+            {loading ? '...' : mode === 'login' ? 'Влез в профила' : mode === 'register' ? 'Създай профил' : 'Изпрати линк за смяна'}
           </div>
 
-          {/* Divider + social + child switcher — hidden in forgot mode */}
+          {/* Divider + social + child switcher */}
           {mode !== 'forgot' && (
             <>
-              {/* Divider */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                margin: '22px 0',
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '22px 0' }}>
                 <div style={{ flex: 1, height: 1, background: T.border }} />
                 <span style={{ fontSize: 12, color: T.text3, fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>или</span>
                 <div style={{ flex: 1, height: 1, background: T.border }} />
               </div>
 
-              {/* Social buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Google */}
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, border: `1.5px solid ${T.border}`,
-                  borderRadius: 12, padding: '12px 0',
+                  gap: 10, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 0',
                   cursor: 'pointer', background: T.surface,
                   fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500, color: T.text,
-                  transition: 'background 0.15s',
                 }}>
                   <span style={{ fontSize: 18 }}>🔵</span>
                   Продължи с Google
                 </div>
-                {/* Apple */}
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 10, border: `1.5px solid ${T.border}`,
-                  borderRadius: 12, padding: '12px 0',
+                  gap: 10, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: '12px 0',
                   cursor: 'pointer', background: T.surface,
                   fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500, color: T.text,
-                  transition: 'background 0.15s',
                 }}>
                   <span style={{ fontSize: 18 }}>⚫</span>
                   Продължи с Apple
                 </div>
               </div>
 
-              {/* Child profile switcher */}
               <div style={{ marginTop: 30 }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <div style={{ flex: 1, height: 1, background: T.border }} />
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, color: T.text3,
-                    fontFamily: 'DM Sans, sans-serif',
-                    textTransform: 'uppercase', letterSpacing: '0.1em',
-                    whiteSpace: 'nowrap',
-                  }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: T.text3, fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
                     Вход за деца
                   </span>
                   <div style={{ flex: 1, height: 1, background: T.border }} />
@@ -342,42 +283,22 @@ export default function LoginPage() {
 
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                   {CHILD_PROFILES.map((child) => (
-                    <div
-                      key={child.name}
-                      onClick={() => handleChildLogin(child.name)}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        gap: 8, cursor: 'pointer',
-                        padding: '14px 24px', borderRadius: 16,
-                        border: `1.5px solid ${T.border}`,
-                        background: T.surf2,
-                        transition: 'all 0.15s',
-                        flex: 1,
-                      }}
-                    >
+                    <div key={child.name} onClick={() => handleChildLogin(child.name)} style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      gap: 8, cursor: 'pointer', padding: '14px 24px', borderRadius: 16,
+                      border: `1.5px solid ${T.border}`, background: T.surf2,
+                      transition: 'all 0.15s', flex: 1,
+                    }}>
                       <div style={{
-                        width: 52, height: 52, borderRadius: '50%',
-                        background: child.color,
+                        width: 52, height: 52, borderRadius: '50%', background: child.color,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 22, fontWeight: 800, color: '#fff',
-                        fontFamily: 'Nunito, sans-serif',
+                        fontSize: 22, fontWeight: 800, color: '#fff', fontFamily: 'Nunito, sans-serif',
                         boxShadow: `0 4px 12px ${child.color}55`,
                       }}>
                         {child.init}
                       </div>
-                      <div style={{
-                        fontSize: 14, fontWeight: 700, color: T.text,
-                        fontFamily: 'DM Sans, sans-serif',
-                      }}>
-                        {child.name}
-                      </div>
-                      <div style={{
-                        fontSize: 10, color: T.text3,
-                        fontFamily: 'DM Sans, sans-serif',
-                        background: T.border,
-                        borderRadius: 99, padding: '2px 8px',
-                        fontWeight: 500,
-                      }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: T.text, fontFamily: 'DM Sans, sans-serif' }}>{child.name}</div>
+                      <div style={{ fontSize: 10, color: T.text3, fontFamily: 'DM Sans, sans-serif', background: T.border, borderRadius: 99, padding: '2px 8px', fontWeight: 500 }}>
                         Без парола
                       </div>
                     </div>

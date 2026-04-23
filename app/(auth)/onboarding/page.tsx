@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { T } from '@/lib/tokens';
 import { Input, Confetti } from '@/components/ui';
 import { MobileShell } from '@/components/layout/Shell';
-import Link from 'next/link';
+import { createFamily } from '@/lib/actions';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -620,12 +621,14 @@ function StepDone({ familyName, members, dailyBase }: StepDoneProps) {
 const STEP_LABELS = ['Добре дошъл', 'Семейство', 'Членове', 'Точки', 'Готово'];
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [step, setStep]             = useState(0);
   const [direction, setDirection]   = useState<'forward' | 'back'>('forward');
   const [familyName, setFamilyName] = useState('');
   const [timezone, setTimezone]     = useState('Europe/Sofia');
   const [members, setMembers]       = useState<Member[]>([]);
   const [dailyBase, setDailyBase]   = useState(10);
+  const [saving, setSaving]         = useState(false);
 
   const totalSteps = 5;
 
@@ -774,19 +777,29 @@ export default function OnboardingPage() {
               {primaryLabel}
             </div>
           ) : (
-            <Link href="/home" style={{ textDecoration: 'none' }}>
-              <div style={{
-                width: '100%', background: T.mustDo, color: '#fff',
+            <div
+              onClick={async () => {
+                if (saving) return;
+                setSaving(true);
+                try {
+                  await createFamily(familyName || 'Нашето семейство', dailyBase, members);
+                  router.push('/home');
+                } catch {
+                  setSaving(false);
+                }
+              }}
+              style={{
+                width: '100%', background: saving ? `${T.mustDo}bb` : T.mustDo, color: '#fff',
                 borderRadius: 16, padding: '16px 0',
                 textAlign: 'center', fontSize: 16, fontWeight: 700,
                 fontFamily: 'DM Sans, sans-serif',
-                cursor: 'pointer',
+                cursor: saving ? 'not-allowed' : 'pointer',
                 boxShadow: `0 6px 22px ${T.mustDo}50`,
                 letterSpacing: '0.01em',
-              }}>
-                Отвори семейния календар →
-              </div>
-            </Link>
+              }}
+            >
+              {saving ? '...' : 'Отвори семейния календар →'}
+            </div>
           )}
         </div>
       </div>

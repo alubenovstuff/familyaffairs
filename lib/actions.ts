@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 async function getSession() {
   const session = await auth();
   if (!session?.user?.id) throw new Error('Unauthorized');
-  return session;
+  return session as typeof session & { user: { id: string } };
 }
 
 async function getMemberFamily(userId: string) {
@@ -71,7 +71,7 @@ export async function createFamily(
   }));
 
   // Link first parent member to current user
-  if (members.length > 0) members[0].user_id = session.user.id;
+  if (members.length > 0) members[0].user_id = session.user?.id ?? null;
 
   const { error: memErr } = await db.from('members').insert(members);
   if (memErr) throw new Error(memErr.message);
