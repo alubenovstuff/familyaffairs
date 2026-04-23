@@ -49,6 +49,8 @@ export async function registerUser(email: string, password: string, name: string
 export async function createFamily(
   familyName: string,
   dailyBasePts: number,
+  parentName: string,
+  parentColor: string,
   membersInput: Array<{ name: string; role: string; color: string }>,
 ) {
   const session = await getSession();
@@ -62,22 +64,37 @@ export async function createFamily(
 
   if (famErr || !family) throw new Error(famErr?.message ?? 'Family creation failed');
 
-  const members = membersInput.map((m) => ({
-    family_id: family.id,
-    name: m.name,
-    init: m.name[0].toUpperCase(),
-    color: m.color,
-    role: m.role,
-    user_id: null as string | null,
-    points_balance: 0,
-    points_total_earned: 0,
-    current_streak: 0,
-  }));
+  function makeInit(name: string) {
+    return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
 
-  // Link first parent member to current user
-  if (members.length > 0) members[0].user_id = session.user?.id ?? null;
+  // Registrant is always the first parent, linked to their auth account
+  const allMembers = [
+    {
+      family_id: family.id,
+      name: parentName,
+      init: makeInit(parentName),
+      color: parentColor,
+      role: 'parent',
+      user_id: session.user.id,
+      points_balance: 0,
+      points_total_earned: 0,
+      current_streak: 0,
+    },
+    ...membersInput.map((m) => ({
+      family_id: family.id,
+      name: m.name,
+      init: makeInit(m.name),
+      color: m.color,
+      role: m.role,
+      user_id: null as string | null,
+      points_balance: 0,
+      points_total_earned: 0,
+      current_streak: 0,
+    })),
+  ];
 
-  const { error: memErr } = await db.from('members').insert(members);
+  const { error: memErr } = await db.from('members').insert(allMembers);
   if (memErr) throw new Error(memErr.message);
 
   revalidatePath('/home');
