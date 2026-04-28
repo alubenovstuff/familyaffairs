@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { T, TASK_TYPES } from '@/lib/tokens';
 import { BottomNav, FAB, MobileShell } from '@/components/layout/Shell';
 import { Avatar, ToggleTabs } from '@/components/ui';
-import { getTasks, getMembers } from '@/lib/actions';
+import { getTasks, getMembers, checkDailyPoints } from '@/lib/actions';
 
 type Member = Awaited<ReturnType<typeof getMembers>>[number];
 type Task = Awaited<ReturnType<typeof getTasks>>[number];
@@ -355,6 +355,7 @@ export default function HomePage() {
   useEffect(() => {
     getTasks().then(setTasks).catch(() => {});
     getMembers().then(setMembers).catch(() => {});
+    checkDailyPoints().catch(() => {});
   }, []);
 
   const weekDays = useMemo(() => getWeekDays(), []);

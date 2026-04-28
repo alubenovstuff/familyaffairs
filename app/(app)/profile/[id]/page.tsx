@@ -2,23 +2,16 @@
 
 import { useState, use, useEffect } from 'react';
 import { T, BADGE_TIERS } from '@/lib/tokens';
-import { getMember, getBadges, getLedger, addBonus } from '@/lib/actions';
+import { getMember, getBadges, getLedger, addBonus, getMemberStats, getWeekActivity } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
 import { ToggleTabs, BadgeCard, StreakChip, Confetti } from '@/components/ui';
+import { TASK_TYPES } from '@/lib/tokens';
 
 type Member = NonNullable<Awaited<ReturnType<typeof getMember>>>;
 type BadgeRow = Awaited<ReturnType<typeof getBadges>>['badges'][number];
 type EarnedRow = Awaited<ReturnType<typeof getBadges>>['earned'][number];
 type LedgerRow = Awaited<ReturnType<typeof getLedger>>[number];
-
-const TASK_TYPE_BREAKDOWN = [
-  { label: 'Домашно', color: T.household, count: 24, total: 30 },
-  { label: 'Must-do', color: T.mustDo, count: 18, total: 20 },
-  { label: 'Предизвик.', color: T.challenge, count: 12, total: 15 },
-  { label: 'Ежедневно', color: T.ongoing, count: 28, total: 30 },
-];
-
-const STREAK_DAYS = [true, true, false, true, true, true, true];
+type Stats = Awaited<ReturnType<typeof getMemberStats>>;
 
 function ledgerIcon(type: string) {
   if (type === 'earned') return '⭐';
@@ -80,7 +73,7 @@ function HeroHeader({ member }: { member: Member }) {
 
 // ── Variant A — Own Profile ───────────────────────────────────────────────
 
-function OwnProfile({ member, badges, earned, ledger }: { member: Member; badges: BadgeRow[]; earned: EarnedRow[]; ledger: LedgerRow[] }) {
+function OwnProfile({ member, badges, earned, ledger, stats, weekActivity }: { member: Member; badges: BadgeRow[]; earned: EarnedRow[]; ledger: LedgerRow[]; stats: Stats; weekActivity: string[] }) {
   const [tab, setTab] = useState(0);
   const [tierFilter, setTierFilter] = useState<string | null>(null);
 
@@ -163,28 +156,43 @@ function OwnProfile({ member, badges, earned, ledger }: { member: Member; badges
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Streak тази седмица</div>
             <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between', marginBottom: 20 }}>
-              {['П', 'В', 'С', 'Ч', 'П', 'С', 'Н'].map((d, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: STREAK_DAYS[i] ? T.mustDo : T.surf2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
-                    {STREAK_DAYS[i] ? '✓' : ''}
+              {['П', 'В', 'С', 'Ч', 'П', 'С', 'Н'].map((d, i) => {
+                const now = new Date();
+                const mondayOffset = now.getDay() === 0 ? -6 : 1 - now.getDay();
+                const day = new Date(now);
+                day.setDate(now.getDate() + mondayOffset + i);
+                const dayStr = day.toISOString().split('T')[0];
+                const active = weekActivity.includes(dayStr);
+                return (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: active ? T.mustDo : T.surf2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+                      {active ? '✓' : ''}
+                    </div>
+                    <span style={{ fontSize: 10, color: T.text3 }}>{d}</span>
                   </div>
-                  <span style={{ fontSize: 10, color: T.text3 }}>{d}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>По тип задача</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {TASK_TYPE_BREAKDOWN.map(t => (
-                <div key={t.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{t.label}</span>
-                    <span style={{ fontSize: 12, color: T.text3 }}>{t.count}/{t.total}</span>
+              {Object.entries(stats).map(([type, { approved, total }]) => {
+                const tt = (TASK_TYPES as Record<string, { label: string; color: string }>)[type];
+                if (!tt || total === 0) return null;
+                return (
+                  <div key={type}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{tt.label}</span>
+                      <span style={{ fontSize: 12, color: T.text3 }}>{approved}/{total}</span>
+                    </div>
+                    <div style={{ height: 6, background: T.surf2, borderRadius: 99 }}>
+                      <div style={{ height: '100%', width: `${(approved / total) * 100}%`, background: tt.color, borderRadius: 99 }} />
+                    </div>
                   </div>
-                  <div style={{ height: 6, background: T.surf2, borderRadius: 99 }}>
-                    <div style={{ height: '100%', width: `${(t.count / t.total) * 100}%`, background: t.color, borderRadius: 99 }} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+              {Object.keys(stats).length === 0 && (
+                <div style={{ fontSize: 13, color: T.text3, textAlign: 'center', padding: '16px 0' }}>Няма задачи още</div>
+              )}
             </div>
           </div>
         )}
@@ -330,11 +338,15 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [badges, setBadges] = useState<BadgeRow[]>([]);
   const [earned, setEarned] = useState<EarnedRow[]>([]);
   const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [stats, setStats] = useState<Stats>({});
+  const [weekActivity, setWeekActivity] = useState<string[]>([]);
 
   useEffect(() => {
     getMember(id).then(m => { if (m) setMember(m); });
     getBadges().then(({ badges: b, earned: e }) => { setBadges(b); setEarned(e); });
     getLedger(id).then(setLedger);
+    getMemberStats(id).then(setStats);
+    getWeekActivity(id).then(setWeekActivity);
   }, [id]);
 
   if (!member) {
@@ -353,7 +365,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         </div>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {variant === 0
-            ? <OwnProfile member={member} badges={badges} earned={earned} ledger={ledger} />
+            ? <OwnProfile member={member} badges={badges} earned={earned} ledger={ledger} stats={stats} weekActivity={weekActivity} />
             : <ParentView member={member} badges={badges} earned={earned} ledger={ledger} />
           }
         </div>

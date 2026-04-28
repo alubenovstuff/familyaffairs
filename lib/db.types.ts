@@ -10,9 +10,9 @@ export interface Database {
         Relationships: [];
       };
       members: {
-        Row: { id: string; user_id: string | null; family_id: string; name: string; init: string; color: string; role: string; points_balance: number; points_total_earned: number; current_streak: number; created_at: string };
-        Insert: { user_id?: string | null; family_id: string; name: string; init: string; color: string; role: string; points_balance?: number; points_total_earned?: number; current_streak?: number; id?: string };
-        Update: { user_id?: string | null; name?: string; init?: string; color?: string; role?: string; points_balance?: number; points_total_earned?: number; current_streak?: number };
+        Row: { id: string; user_id: string | null; family_id: string; name: string; init: string; color: string; role: string; points_balance: number; points_total_earned: number; current_streak: number; last_streak_date: string | null; created_at: string };
+        Insert: { user_id?: string | null; family_id: string; name: string; init: string; color: string; role: string; points_balance?: number; points_total_earned?: number; current_streak?: number; last_streak_date?: string | null; id?: string };
+        Update: { user_id?: string | null; name?: string; init?: string; color?: string; role?: string; points_balance?: number; points_total_earned?: number; current_streak?: number; last_streak_date?: string | null };
         Relationships: [];
       };
       tasks: {

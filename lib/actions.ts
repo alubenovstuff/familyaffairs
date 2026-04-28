@@ -180,6 +180,9 @@ export async function approveTask(taskId: string) {
     .select('member_id')
     .eq('task_id', taskId);
 
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
   if (assignees) {
     for (const a of assignees) {
       await db.rpc('increment_points', { p_member_id: a.member_id, p_amount: task.pts });
@@ -191,6 +194,23 @@ export async function approveTask(taskId: string) {
         type: 'earned',
         task_id: taskId,
       });
+
+      const { data: m } = await db
+        .from('members')
+        .select('current_streak, last_streak_date')
+        .eq('id', a.member_id)
+        .single();
+
+      if (m) {
+        const lastDate = m.last_streak_date as string | null;
+        const newStreak =
+          lastDate === today ? m.current_streak
+          : lastDate === yesterday ? (m.current_streak ?? 0) + 1
+          : 1;
+        await db.from('members')
+          .update({ current_streak: newStreak, last_streak_date: today })
+          .eq('id', a.member_id);
+      }
     }
   }
 
@@ -397,4 +417,87 @@ export async function addBonus(memberId: string, amount: number, note: string) {
   });
 
   revalidatePath('/profile/' + memberId);
+}
+
+// ── Daily Points ──────────────────────────────────────────────────────────
+
+export async function checkDailyPoints() {
+  const session = await getSession();
+  const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) return;
+
+  const { data: family } = await db.from('families').select('daily_base_pts').eq('id', member.family_id).single();
+  if (!family?.daily_base_pts) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  const { data: existing } = await db
+    .from('ledger')
+    .select('id')
+    .eq('member_id', member.id)
+    .eq('type', 'daily')
+    .gte('created_at', today + 'T00:00:00')
+    .limit(1);
+
+  if (existing && existing.length > 0) return;
+
+  await db.rpc('increment_points', { p_member_id: member.id, p_amount: family.daily_base_pts });
+  await db.from('ledger').insert({
+    member_id: member.id,
+    family_id: member.family_id,
+    amount: family.daily_base_pts,
+    description: '🌅 Дневни точки',
+    type: 'daily',
+  });
+
+  revalidatePath('/home');
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+
+export async function getMemberStats(memberId: string) {
+  await getSession();
+  const db = createServerClient();
+
+  const { data: assignments } = await db
+    .from('task_assignees')
+    .select('task_id')
+    .eq('member_id', memberId);
+
+  if (!assignments?.length) return {} as Record<string, { approved: number; total: number }>;
+
+  const taskIds = assignments.map(a => a.task_id);
+  const { data: tasks } = await db
+    .from('tasks')
+    .select('type, status')
+    .in('id', taskIds);
+
+  const result: Record<string, { approved: number; total: number }> = {};
+  for (const t of tasks ?? []) {
+    if (!result[t.type]) result[t.type] = { approved: 0, total: 0 };
+    result[t.type].total++;
+    if (t.status === 'approved') result[t.type].approved++;
+  }
+  return result;
+}
+
+export async function getWeekActivity(memberId: string) {
+  await getSession();
+  const db = createServerClient();
+
+  const now = new Date();
+  const mondayOffset = now.getDay() === 0 ? -6 : 1 - now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  const mondayStr = monday.toISOString().split('T')[0];
+
+  const { data } = await db
+    .from('ledger')
+    .select('created_at')
+    .eq('member_id', memberId)
+    .eq('type', 'earned')
+    .gte('created_at', mondayStr + 'T00:00:00');
+
+  const dates = new Set((data ?? []).map(e => e.created_at.split('T')[0]));
+  return [...dates];
 }
