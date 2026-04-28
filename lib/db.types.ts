@@ -51,6 +51,12 @@ export interface Database {
         Update: { amount?: number; description?: string | null; type?: string };
         Relationships: [];
       };
+      family_invites: {
+        Row: { id: string; family_id: string; token: string; used: boolean; created_at: string };
+        Insert: { family_id: string; token?: string; used?: boolean; id?: string };
+        Update: { used?: boolean };
+        Relationships: [];
+      };
       users: {
         Row: { id: string; name: string | null; email: string | null; email_verified: string | null; image: string | null };
         Insert: { name?: string | null; email?: string | null; email_verified?: string | null; image?: string | null; id?: string };

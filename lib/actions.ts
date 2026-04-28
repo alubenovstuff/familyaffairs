@@ -581,3 +581,91 @@ export async function getWeekActivity(memberId: string) {
   const dates = new Set((data ?? []).map(e => e.created_at.split('T')[0]));
   return [...dates];
 }
+
+// ── Invites ───────────────────────────────────────────────────────────────
+
+export async function generateInvite(): Promise<string> {
+  const session = await getSession();
+  const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) throw new Error('No family found');
+
+  const { data, error } = await db
+    .from('family_invites')
+    .insert({ family_id: member.family_id })
+    .select('token')
+    .single();
+
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create invite');
+  return data.token;
+}
+
+export async function getInviteInfo(token: string) {
+  const db = createServerClient();
+  const { data: invite } = await db
+    .from('family_invites')
+    .select('family_id, used')
+    .eq('token', token)
+    .single();
+
+  if (!invite) return null;
+  if (invite.used) return { valid: false, familyName: '' };
+
+  const { data: family } = await db
+    .from('families')
+    .select('name')
+    .eq('id', invite.family_id)
+    .single();
+
+  return { valid: true, familyName: family?.name ?? '' };
+}
+
+export async function joinFamily(token: string) {
+  const session = await getSession();
+  const db = createServerClient();
+
+  const { data: invite } = await db
+    .from('family_invites')
+    .select('id, family_id, used')
+    .eq('token', token)
+    .single();
+
+  if (!invite || invite.used) throw new Error('Invalid or expired invite');
+
+  const existing = await getMemberFamily(session.user.id);
+  if (existing) throw new Error('Already in a family');
+
+  function makeInit(name: string) {
+    return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  // Link to an unlinked parent member if one exists, otherwise create new
+  const { data: unlinked } = await db
+    .from('members')
+    .select('id')
+    .eq('family_id', invite.family_id)
+    .eq('role', 'parent')
+    .is('user_id', null)
+    .limit(1)
+    .single();
+
+  if (unlinked) {
+    await db.from('members').update({ user_id: session.user.id }).eq('id', unlinked.id);
+  } else {
+    const userName = session.user.name ?? session.user.email ?? 'Родител';
+    await db.from('members').insert({
+      family_id: invite.family_id,
+      name: userName,
+      init: makeInit(userName),
+      color: '#6366f1',
+      role: 'parent',
+      user_id: session.user.id,
+      points_balance: 0,
+      points_total_earned: 0,
+      current_streak: 0,
+    });
+  }
+
+  await db.from('family_invites').update({ used: true }).eq('id', invite.id);
+  revalidatePath('/home');
+}

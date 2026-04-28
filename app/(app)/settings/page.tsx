@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { T } from '@/lib/tokens';
-import { getMembers, getFamily, getCurrentMember, updateFamily, updateMember } from '@/lib/actions';
+import { getMembers, getFamily, getCurrentMember, updateFamily, updateMember, generateInvite } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
 import { ToggleTabs } from '@/components/ui';
 
@@ -40,6 +40,57 @@ function Row({ children, last = false }: { children: React.ReactNode; last?: boo
     <div style={{ padding: '0 14px', borderBottom: last ? 'none' : `1px solid ${T.border}` }}>
       {children}
     </div>
+  );
+}
+
+// ── Invite row ────────────────────────────────────────────────────────────
+
+function InviteRow() {
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerate = async () => {
+    if (generating) return;
+    setGenerating(true);
+    try {
+      const token = await generateInvite();
+      const url = `${window.location.origin}/join?token=${token}`;
+      setInviteUrl(url);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Row last>
+      <div style={{ padding: '12px 0' }}>
+        {!inviteUrl ? (
+          <div onClick={handleGenerate} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: generating ? 'not-allowed' : 'pointer' }}>
+            <span style={{ fontSize: 18 }}>🔗</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: generating ? T.text3 : T.mustDo }}>{generating ? 'Генериране...' : 'Покани втори родител'}</span>
+          </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.text3, marginBottom: 6 }}>Сподели тази връзка:</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1, background: T.surf2, borderRadius: 8, padding: '8px 10px', fontSize: 11, color: T.text2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {inviteUrl}
+              </div>
+              <div onClick={handleCopy} style={{ background: copied ? T.household : T.mustDo, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{copied ? '✓' : 'Копирай'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </Row>
   );
 }
 
@@ -172,7 +223,7 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
       {/* Members section */}
       <SectionCard title="Членове">
         {members.map((m, i) => (
-          <Row key={m.id} last={i === members.length - 1}>
+          <Row key={m.id}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Nunito, sans-serif', flexShrink: 0 }}>{m.init}</div>
               <div style={{ flex: 1 }}>
@@ -183,10 +234,11 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
           </Row>
         ))}
         {members.length === 0 && (
-          <Row last>
+          <Row>
             <div style={{ padding: '12px 0', color: T.text3, fontSize: 13 }}>Зареждане...</div>
           </Row>
         )}
+        <InviteRow />
       </SectionCard>
 
       {/* Notifications */}
