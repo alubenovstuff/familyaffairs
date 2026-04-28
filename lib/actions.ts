@@ -7,6 +7,64 @@ import type { Database } from './db.types';
 
 type TaskRow = Database['public']['Tables']['tasks']['Row'];
 type TaskWithAssignees = TaskRow & { task_assignees: { member_id: string }[] };
+type DB = ReturnType<typeof createServerClient>;
+
+const DEFAULT_BADGES = [
+  { emoji: '🔥', title: 'Пламък',          description: 'Изпълни задачи 3 дни подред',   category: 'streak', tier: 'bronze',    pts_reward: 10, requirement_value: 3 },
+  { emoji: '🔥', title: 'Огнена серия',     description: 'Изпълни задачи 7 дни подред',   category: 'streak', tier: 'silver',    pts_reward: 25, requirement_value: 7 },
+  { emoji: '⚡', title: 'Легенден стрийк', description: 'Изпълни задачи 21 дни подред',  category: 'streak', tier: 'gold',      pts_reward: 50, requirement_value: 21 },
+  { emoji: '✅', title: 'Начало',           description: 'Одобри 5 задачи',              category: 'tasks',  tier: 'bronze',    pts_reward: 10, requirement_value: 5 },
+  { emoji: '🏆', title: 'Прилежен',         description: 'Одобри 25 задачи',             category: 'tasks',  tier: 'silver',    pts_reward: 25, requirement_value: 25 },
+  { emoji: '👑', title: 'Майстор',          description: 'Одобри 75 задачи',             category: 'tasks',  tier: 'gold',      pts_reward: 50, requirement_value: 75 },
+  { emoji: '⭐', title: 'Запалил се',       description: 'Спечели 100 точки',            category: 'points', tier: 'bronze',    pts_reward: 10, requirement_value: 100 },
+  { emoji: '💰', title: 'Събирач',          description: 'Спечели 500 точки',            category: 'points', tier: 'silver',    pts_reward: 25, requirement_value: 500 },
+  { emoji: '💎', title: 'Богаташ',          description: 'Спечели 2000 точки',           category: 'points', tier: 'gold',      pts_reward: 50, requirement_value: 2000 },
+] as const;
+
+async function seedDefaultBadges(db: DB, familyId: string) {
+  await db.from('badges').insert(
+    DEFAULT_BADGES.map(b => ({ ...b, family_id: familyId })),
+  );
+}
+
+async function checkAndAwardBadges(
+  db: DB,
+  memberId: string,
+  familyId: string,
+  currentStreak: number,
+  pointsEarned: number,
+  approvedTasks: number,
+) {
+  const [{ data: allBadges }, { data: earnedRows }] = await Promise.all([
+    db.from('badges').select('*').eq('family_id', familyId),
+    db.from('member_badges').select('badge_id').eq('member_id', memberId),
+  ]);
+
+  const earnedIds = new Set(earnedRows?.map(e => e.badge_id) ?? []);
+
+  for (const badge of allBadges ?? []) {
+    if (earnedIds.has(badge.id) || badge.requirement_value === null) continue;
+    const v = badge.requirement_value;
+    const qualifies =
+      (badge.category === 'streak' && currentStreak >= v) ||
+      (badge.category === 'tasks'  && approvedTasks >= v) ||
+      (badge.category === 'points' && pointsEarned  >= v);
+    if (!qualifies) continue;
+
+    await db.from('member_badges').insert({ member_id: memberId, badge_id: badge.id });
+    if (badge.pts_reward > 0) {
+      await db.rpc('increment_points', { p_member_id: memberId, p_amount: badge.pts_reward });
+      await db.from('ledger').insert({
+        member_id: memberId,
+        family_id: familyId,
+        amount: badge.pts_reward,
+        description: `🏅 Значка: ${badge.title}`,
+        type: 'bonus',
+        badge_id: badge.id,
+      });
+    }
+  }
+}
 
 async function getSession() {
   const session = await auth();
@@ -96,6 +154,8 @@ export async function createFamily(
 
   const { error: memErr } = await db.from('members').insert(allMembers);
   if (memErr) throw new Error(memErr.message);
+
+  await seedDefaultBadges(db, family.id);
 
   revalidatePath('/home');
   return family;
@@ -197,7 +257,7 @@ export async function approveTask(taskId: string) {
 
       const { data: m } = await db
         .from('members')
-        .select('current_streak, last_streak_date')
+        .select('current_streak, last_streak_date, points_total_earned')
         .eq('id', a.member_id)
         .single();
 
@@ -210,6 +270,26 @@ export async function approveTask(taskId: string) {
         await db.from('members')
           .update({ current_streak: newStreak, last_streak_date: today })
           .eq('id', a.member_id);
+
+        // Count approved tasks for this member
+        const { data: memberAssignments } = await db
+          .from('task_assignees').select('task_id').eq('member_id', a.member_id);
+        const memberTaskIds = memberAssignments?.map(x => x.task_id) ?? [];
+        let approvedCount = 0;
+        if (memberTaskIds.length > 0) {
+          const { count } = await db.from('tasks')
+            .select('id', { count: 'exact', head: true })
+            .in('id', memberTaskIds)
+            .eq('status', 'approved');
+          approvedCount = count ?? 0;
+        }
+
+        await checkAndAwardBadges(
+          db, a.member_id, member.family_id,
+          newStreak,
+          (m.points_total_earned ?? 0) + task.pts,
+          approvedCount,
+        );
       }
     }
   }
