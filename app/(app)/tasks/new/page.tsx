@@ -40,6 +40,7 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
   const [assignees, setAssignees] = useState<string[]>([]);
   const [splitType, setSplitType] = useState('equal');
   const [rewardType, setRewardType] = useState('none');
+  const [due, setDue] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -54,7 +55,7 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
         title,
         type: taskType,
         pts,
-        due: null,
+        due: due || null,
         description: desc || null,
         reward: rewardType,
         reward_label: null,
@@ -176,6 +177,10 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
                 ))}
               </div>
             </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 5 }}>Краен срок</div>
+              <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ borderRadius: 10, padding: '9px 14px', fontSize: 13, border: `1.5px solid ${due ? T.mustDo : T.border}`, background: '#fff', color: due ? T.text : T.text3, fontFamily: 'DM Sans, sans-serif', outline: 'none', width: '100%' }} />
+            </div>
           </div>
         )}
 
@@ -293,6 +298,7 @@ const ScrollVariant = ({ members }: { members: Member[] }) => {
   const [assignees, setAssignees] = useState<string[]>([]);
   const [recurrence, setRecurrence] = useState('Без повторение');
   const [rewardType, setRewardType] = useState('none');
+  const [due, setDue] = useState('');
   const [saving, setSaving] = useState(false);
 
   const tp = TASK_TYPES[taskType as keyof typeof TASK_TYPES] || TASK_TYPES.household;
@@ -307,7 +313,7 @@ const ScrollVariant = ({ members }: { members: Member[] }) => {
         title,
         type: taskType,
         pts,
-        due: null,
+        due: due || null,
         description: desc || null,
         reward: rewardType,
         reward_label: null,
@@ -411,6 +417,12 @@ const ScrollVariant = ({ members }: { members: Member[] }) => {
               <div key={r} onClick={() => setRecurrence(r)} style={{ padding: '6px 12px', borderRadius: 99, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: recurrence === r ? T.ongoing : T.surf2, color: recurrence === r ? '#fff' : T.text2, border: `1px solid ${recurrence === r ? T.ongoing : T.border}` }}>{r}</div>
             ))}
           </div>
+        </div>
+
+        {/* Due date */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 6 }}>Краен срок</div>
+          <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ borderRadius: 10, padding: '8px 12px', fontSize: 13, border: `1.5px solid ${due ? T.mustDo : T.border}`, background: '#fff', color: due ? T.text : T.text3, fontFamily: 'DM Sans, sans-serif', outline: 'none', width: '100%' }} />
         </div>
 
         {/* Reward */}

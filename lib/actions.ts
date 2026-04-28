@@ -169,7 +169,7 @@ export async function approveTask(taskId: string) {
   const member = await getMemberFamily(session.user.id);
   if (!member) throw new Error('No family found');
 
-  const { data: task } = await db.from('tasks').select('pts').eq('id', taskId).single();
+  const { data: task } = await db.from('tasks').select('pts, title').eq('id', taskId).single();
   if (!task) throw new Error('Task not found');
 
   await db.from('tasks').update({ status: 'approved' }).eq('id', taskId);
@@ -187,7 +187,7 @@ export async function approveTask(taskId: string) {
         member_id: a.member_id,
         family_id: member.family_id,
         amount: task.pts,
-        description: 'Задача одобрена',
+        description: `✅ ${task.title}`,
         type: 'earned',
         task_id: taskId,
       });
@@ -377,4 +377,24 @@ export async function getLedger(memberId?: string) {
     .limit(50);
 
   return data ?? [];
+}
+
+// ── Bonus ─────────────────────────────────────────────────────────────────
+
+export async function addBonus(memberId: string, amount: number, note: string) {
+  const session = await getSession();
+  const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) throw new Error('No family found');
+
+  await db.rpc('increment_points', { p_member_id: memberId, p_amount: amount });
+  await db.from('ledger').insert({
+    member_id: memberId,
+    family_id: member.family_id,
+    amount,
+    description: note ? `⭐ Бонус: ${note}` : '⭐ Бонус',
+    type: 'bonus',
+  });
+
+  revalidatePath('/profile/' + memberId);
 }

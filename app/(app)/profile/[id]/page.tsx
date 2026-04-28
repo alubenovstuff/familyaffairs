@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from 'react';
 import { T, BADGE_TIERS } from '@/lib/tokens';
-import { getMember, getBadges, getLedger } from '@/lib/actions';
+import { getMember, getBadges, getLedger, addBonus } from '@/lib/actions';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
 import { ToggleTabs, BadgeCard, StreakChip, Confetti } from '@/components/ui';
 
@@ -203,10 +203,19 @@ function ParentView({ member, badges, earned, ledger }: { member: Member; badges
   const [bonusSent, setBonusSent] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const sendBonus = () => {
-    setShowConfetti(true);
-    setBonusSent(true);
-    setTimeout(() => setBonusOpen(false), 1800);
+  const [sendingBonus, setSendingBonus] = useState(false);
+
+  const sendBonus = async () => {
+    if (sendingBonus) return;
+    setSendingBonus(true);
+    try {
+      await addBonus(member.id, bonusAmt, bonusNote);
+      setShowConfetti(true);
+      setBonusSent(true);
+      setTimeout(() => { setBonusOpen(false); setBonusSent(false); setBonusNote(''); }, 1800);
+    } finally {
+      setSendingBonus(false);
+    }
   };
 
   return (
@@ -300,8 +309,8 @@ function ParentView({ member, badges, earned, ledger }: { member: Member; badges
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 5 }}>Бележка (незадължително)</div>
                   <input value={bonusNote} onChange={e => setBonusNote(e.target.value)} placeholder="напр. За отличен резултат!" style={{ width: '100%', borderRadius: 10, padding: '10px 14px', fontSize: 13, border: `1.5px solid ${T.border}`, background: '#fff', color: T.text, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} />
                 </div>
-                <div onClick={sendBonus} style={{ background: T.challenge, borderRadius: 12, padding: 14, textAlign: 'center', cursor: 'pointer', boxShadow: `0 4px 16px ${T.challenge}40` }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Изпрати +{bonusAmt} т.</span>
+                <div onClick={sendBonus} style={{ background: sendingBonus ? T.border : T.challenge, borderRadius: 12, padding: 14, textAlign: 'center', cursor: sendingBonus ? 'not-allowed' : 'pointer', boxShadow: sendingBonus ? 'none' : `0 4px 16px ${T.challenge}40` }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{sendingBonus ? '...' : `Изпрати +${bonusAmt} т.`}</span>
                 </div>
               </>
             )}
