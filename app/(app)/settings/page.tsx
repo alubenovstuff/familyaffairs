@@ -104,6 +104,7 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
   const [notifs, setNotifs] = useState({ approvals: true, badges: true, bonuses: true, deadlines: false });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (family) {
@@ -122,10 +123,13 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
   const handleSaveFamily = async () => {
     if (saving) return;
     setSaving(true);
+    setSaveError('');
     try {
       await updateFamily({ daily_base_pts: dailyBase, auto_approve: autoApprove });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError('Грешка при запазване');
     } finally {
       setSaving(false);
     }
@@ -134,8 +138,12 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
   const handleColorChange = async (color: string) => {
     setAvatarColor(color);
     if (currentMember?.id) {
-      await updateMember(currentMember.id, { color });
-      onRefresh();
+      try {
+        await updateMember(currentMember.id, { color });
+        onRefresh();
+      } catch {
+        setAvatarColor(currentMember.color ?? T.avatars[0]);
+      }
     }
   };
 
@@ -215,7 +223,9 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
         </Row>
         <Row last>
           <div onClick={handleSaveFamily} style={{ padding: '12px 0', textAlign: 'center', cursor: saving ? 'not-allowed' : 'pointer' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: saved ? T.household : T.mustDo }}>{saving ? 'Запазване...' : saved ? '✓ Запазено' : 'Запази настройките'}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: saveError ? T.mustDo : saved ? T.household : T.mustDo }}>
+              {saving ? 'Запазване...' : saveError ? saveError : saved ? '✓ Запазено' : 'Запази настройките'}
+            </span>
           </div>
         </Row>
       </SectionCard>

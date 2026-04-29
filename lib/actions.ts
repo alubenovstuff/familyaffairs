@@ -51,7 +51,8 @@ async function checkAndAwardBadges(
       (badge.category === 'points' && pointsEarned  >= v);
     if (!qualifies) continue;
 
-    await db.from('member_badges').insert({ member_id: memberId, badge_id: badge.id });
+    const { error: insertErr } = await db.from('member_badges').insert({ member_id: memberId, badge_id: badge.id });
+    if (insertErr) continue; // already awarded (race condition guard)
     if (badge.pts_reward > 0) {
       await db.rpc('increment_points', { p_member_id: memberId, p_amount: badge.pts_reward });
       await db.from('ledger').insert({
@@ -229,10 +230,12 @@ export async function approveTask(taskId: string) {
   const member = await getMemberFamily(session.user.id);
   if (!member) throw new Error('No family found');
 
-  const { data: task } = await db.from('tasks').select('pts, title').eq('id', taskId).single();
+  const { data: task } = await db.from('tasks').select('pts, title')
+    .eq('id', taskId).eq('family_id', member.family_id).single();
   if (!task) throw new Error('Task not found');
 
-  await db.from('tasks').update({ status: 'approved' }).eq('id', taskId);
+  await db.from('tasks').update({ status: 'approved' })
+    .eq('id', taskId).eq('family_id', member.family_id);
 
   // Award points to all assignees
   const { data: assignees } = await db
@@ -299,27 +302,36 @@ export async function approveTask(taskId: string) {
 }
 
 export async function rejectTask(taskId: string) {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
-  await db.from('tasks').update({ status: 'rejected' }).eq('id', taskId);
+  const member = await getMemberFamily(session.user.id);
+  if (!member) throw new Error('No family found');
+  await db.from('tasks').update({ status: 'rejected' })
+    .eq('id', taskId).eq('family_id', member.family_id);
   revalidatePath('/tasks');
   revalidatePath('/approvals');
 }
 
 export async function submitTaskForApproval(taskId: string) {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
-  await db.from('tasks').update({ status: 'pending_approval' }).eq('id', taskId);
+  const member = await getMemberFamily(session.user.id);
+  if (!member) throw new Error('No family found');
+  await db.from('tasks').update({ status: 'pending_approval' })
+    .eq('id', taskId).eq('family_id', member.family_id);
   revalidatePath('/tasks');
 }
 
 export async function getTask(taskId: string): Promise<TaskWithAssignees | null> {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
+  const member = await getMemberFamily(session.user.id);
+  if (!member) return null;
   const { data } = await db
     .from('tasks')
     .select('*, task_assignees(member_id)')
     .eq('id', taskId)
+    .eq('family_id', member.family_id)
     .single();
   return data as unknown as TaskWithAssignees | null;
 }
@@ -345,9 +357,12 @@ export async function updateFamily(updates: { name?: string; daily_base_pts?: nu
 }
 
 export async function updateMember(memberId: string, updates: { name?: string; color?: string; role?: string }) {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
-  await db.from('members').update(updates).eq('id', memberId);
+  const caller = await getMemberFamily(session.user.id);
+  if (!caller) throw new Error('No family found');
+  await db.from('members').update(updates)
+    .eq('id', memberId).eq('family_id', caller.family_id);
   revalidatePath('/settings');
   revalidatePath('/profile/' + memberId);
 }
@@ -379,8 +394,12 @@ export async function getMembers() {
 }
 
 export async function getMember(memberId: string) {
+  const session = await getSession();
   const db = createServerClient();
-  const { data } = await db.from('members').select('*').eq('id', memberId).single();
+  const caller = await getMemberFamily(session.user.id);
+  if (!caller) return null;
+  const { data } = await db.from('members').select('*')
+    .eq('id', memberId).eq('family_id', caller.family_id).single();
   return data;
 }
 
@@ -426,7 +445,8 @@ export async function approveWish(wishId: string) {
   const member = await getMemberFamily(session.user.id);
   if (!member) throw new Error('No family');
 
-  const { data: wish } = await db.from('wishes').select('*').eq('id', wishId).single();
+  const { data: wish } = await db.from('wishes').select('*')
+    .eq('id', wishId).eq('family_id', member.family_id).single();
   if (!wish) throw new Error('Wish not found');
 
   await db.from('wishes').update({ status: 'approved' }).eq('id', wishId);
@@ -468,7 +488,14 @@ export async function getLedger(memberId?: string) {
   const member = await getMemberFamily(session.user.id);
   if (!member) return [];
 
+  // When viewing another member's ledger, verify they're in the same family
   const targetId = memberId ?? member.id;
+  if (memberId && memberId !== member.id) {
+    const { data: target } = await db.from('members').select('id')
+      .eq('id', memberId).eq('family_id', member.family_id).single();
+    if (!target) return [];
+  }
+
   const { data } = await db
     .from('ledger')
     .select('*')
@@ -486,6 +513,10 @@ export async function addBonus(memberId: string, amount: number, note: string) {
   const db = createServerClient();
   const member = await getMemberFamily(session.user.id);
   if (!member) throw new Error('No family found');
+
+  const { data: target } = await db.from('members').select('id')
+    .eq('id', memberId).eq('family_id', member.family_id).single();
+  if (!target) throw new Error('Member not in family');
 
   await db.rpc('increment_points', { p_member_id: memberId, p_amount: amount });
   await db.from('ledger').insert({
@@ -536,8 +567,14 @@ export async function checkDailyPoints() {
 // ── Stats ─────────────────────────────────────────────────────────────────
 
 export async function getMemberStats(memberId: string) {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
+  const caller = await getMemberFamily(session.user.id);
+  if (!caller) return {} as Record<string, { approved: number; total: number }>;
+
+  const { data: targetCheck } = await db.from('members').select('id')
+    .eq('id', memberId).eq('family_id', caller.family_id).single();
+  if (!targetCheck) return {} as Record<string, { approved: number; total: number }>;
 
   const { data: assignments } = await db
     .from('task_assignees')
@@ -562,8 +599,13 @@ export async function getMemberStats(memberId: string) {
 }
 
 export async function getWeekActivity(memberId: string) {
-  await getSession();
+  const session = await getSession();
   const db = createServerClient();
+  const caller = await getMemberFamily(session.user.id);
+  if (!caller) return [];
+  const { data: targetCheck } = await db.from('members').select('id')
+    .eq('id', memberId).eq('family_id', caller.family_id).single();
+  if (!targetCheck) return [];
 
   const now = new Date();
   const mondayOffset = now.getDay() === 0 ? -6 : 1 - now.getDay();

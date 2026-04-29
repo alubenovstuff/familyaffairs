@@ -78,10 +78,10 @@ function JoinContent() {
             <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${T.border}`, padding: 20, marginBottom: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: T.text2, marginBottom: 16 }}>Трябва да имаш акаунт, за да приемеш поканата.</div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <div onClick={() => router.push(`/login?callbackUrl=/join?token=${token}`)} style={{ flex: 1, background: T.mustDo, borderRadius: 12, padding: '12px', textAlign: 'center', cursor: 'pointer' }}>
+                <div onClick={() => router.push(`/login?callbackUrl=${encodeURIComponent('/join?token=' + token)}`)} style={{ flex: 1, background: T.mustDo, borderRadius: 12, padding: '12px', textAlign: 'center', cursor: 'pointer' }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Влез</span>
                 </div>
-                <div onClick={() => router.push(`/register?callbackUrl=/join?token=${token}`)} style={{ flex: 1, background: T.surf2, borderRadius: 12, padding: '12px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${T.border}` }}>
+                <div onClick={() => router.push(`/register?callbackUrl=${encodeURIComponent('/join?token=' + token)}`)} style={{ flex: 1, background: T.surf2, borderRadius: 12, padding: '12px', textAlign: 'center', cursor: 'pointer', border: `1px solid ${T.border}` }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Регистрация</span>
                 </div>
               </div>

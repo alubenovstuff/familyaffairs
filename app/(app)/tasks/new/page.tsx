@@ -43,6 +43,7 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
   const [due, setDue] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const toggleAssignee = (id: string) =>
     setAssignees(a => a.includes(id) ? a.filter(x => x !== id) : [...a, id]);
@@ -50,6 +51,7 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
   const handleCreate = async () => {
     if (saving) return;
     setSaving(true);
+    setCreateError('');
     try {
       await createTask({
         title,
@@ -62,6 +64,8 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
         assignee_ids: assignees,
       });
       setDone(true);
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : 'Грешка при създаване');
     } finally {
       setSaving(false);
     }
@@ -267,6 +271,9 @@ const WizardVariant = ({ members }: { members: Member[] }) => {
 
       {/* Bottom action */}
       <div style={{ background: '#fff', borderTop: `1px solid ${T.border}`, padding: '12px 16px', flexShrink: 0 }}>
+        {createError && (
+          <div style={{ fontSize: 12, color: T.mustDo, marginBottom: 8, textAlign: 'center' }}>{createError}</div>
+        )}
         {step < 3 ? (
           <div onClick={() => setStep(s => s + 1)} style={{
             background: (step === 1 && !title.trim()) ? T.border : T.mustDo,
