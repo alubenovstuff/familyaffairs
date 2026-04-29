@@ -5,6 +5,7 @@ import { T, TASK_TYPES } from '@/lib/tokens';
 import { BottomNav, FAB, MobileShell } from '@/components/layout/Shell';
 import { Avatar, ToggleTabs } from '@/components/ui';
 import { getTasks, getMembers, checkDailyPoints } from '@/lib/actions';
+import { Tutorial } from './tutorial';
 
 type Member = Awaited<ReturnType<typeof getMembers>>[number];
 type Task = Awaited<ReturnType<typeof getTasks>>[number];
@@ -366,6 +367,7 @@ export default function HomePage() {
 
   return (
     <MobileShell>
+      <Tutorial />
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 16px 0', background: T.surface, flexShrink: 0 }}>
           <ToggleTabs options={['Grid', 'Lanes']} active={variant} onChange={(i) => setVariant(i as 0 | 1)} />

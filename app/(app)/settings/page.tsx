@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { T } from '@/lib/tokens';
 import { getMembers, getFamily, getCurrentMember, updateFamily, updateMember, generateInvite } from '@/lib/actions';
+import { resetTutorial } from '@/app/(app)/home/tutorial';
 import { MobileShell, BottomNav } from '@/components/layout/Shell';
 import { ToggleTabs } from '@/components/ui';
 
@@ -265,6 +266,16 @@ function ParentSettings({ members, family, currentMember, onRefresh }: { members
         <Row last>
           <div onClick={() => signOut({ callbackUrl: '/login' })} style={{ padding: '12px 0', textAlign: 'center', cursor: 'pointer' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: T.mustDo }}>Излез от акаунта</span>
+          </div>
+        </Row>
+      </SectionCard>
+
+      {/* Help */}
+      <SectionCard title="Помощ">
+        <Row last>
+          <div onClick={() => { resetTutorial(); window.location.href = '/home'; }} style={{ padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <span style={{ fontSize: 18 }}>🎓</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: T.mustDo }}>Покажи урока отново</span>
           </div>
         </Row>
       </SectionCard>
